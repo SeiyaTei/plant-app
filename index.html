@@ -6,15 +6,27 @@
   <title>植物水やり管理アプリ</title>
   <link rel="manifest" href="manifest.json">
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* スムーススクロール */
+    html { scroll-behavior: smooth; }
+    /* ハイライトアニメーション */
+    @keyframes highlight {
+      0% { background-color: #d1fae5; }
+      100% { background-color: #ffffff; }
+    }
+    .card-highlight {
+      animation: highlight 2s ease-out;
+    }
+  </style>
 </head>
-<body class="bg-slate-100 text-slate-800 p-4 max-w-md mx-auto min-h-screen pb-20">
+<body class="bg-slate-100 text-slate-800 p-4 max-w-md mx-auto min-h-screen pb-24 relative">
 
   <h1 class="text-2xl font-bold mb-4 text-emerald-700 text-center">🌱 植物水やり管理</h1>
 
   <!-- 水量計算結果表示エリア -->
-  <div class="bg-white p-4 rounded-xl shadow-md mb-6 border-l-4 border-emerald-500">
+  <div class="bg-white p-4 rounded-xl shadow-md mb-3 border-l-4 border-emerald-500">
     <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">本日必要な合計水量</h2>
-    <div class="flex justify-between items-baseline">
+    <div class="flex justify-between items-baseline mb-2">
       <div>
         <span id="totalWater" class="text-3xl font-black text-emerald-600">0</span>
         <span class="text-sm font-semibold text-slate-600"> ml</span>
@@ -23,6 +35,10 @@
         通常: <span id="normalWater">0</span>ml / どぶ漬け最大: <span id="maxSoak">0</span>ml
       </div>
     </div>
+    <!-- 本日の水やり一括完了ボタン -->
+    <button onclick="waterAllToday()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-lg shadow-sm transition flex items-center justify-center gap-1">
+      ✨ 本日の水やりをすべて完了する
+    </button>
   </div>
 
   <!-- データバックアップ / ロード機能 -->
@@ -77,19 +93,41 @@
     </div>
   </form>
 
-  <!-- 植物一覧リスト（自動で次回水やりが近い順に並びます） -->
+  <!-- 植物一覧ヘッダー（並び替え切り替えドロップダウン付き） -->
   <div class="mb-2 flex justify-between items-center">
-    <h2 class="text-sm font-bold text-slate-600">植物一覧（水やり順）</h2>
-    <span class="text-xs text-slate-400">次回予定が近い順</span>
+    <h2 class="text-sm font-bold text-slate-600">植物一覧</h2>
+    <div class="flex items-center gap-1">
+      <label for="sortMode" class="text-xs text-slate-400 font-semibold">並び順:</label>
+      <select id="sortMode" onchange="renderList()" class="text-xs bg-white border rounded-lg px-2 py-1 text-slate-700 font-semibold focus:outline-emerald-500 shadow-sm">
+        <option value="nextDate">次回水やりが近い順</option>
+        <option value="created">登録順</option>
+        <option value="name">名前順 (50音)</option>
+      </select>
+    </div>
   </div>
+
   <div id="plantList" class="space-y-3"></div>
+
+  <!-- トップに戻るフローティングボタン -->
+  <button id="scrollToTopBtn" onclick="scrollToTop()" class="fixed bottom-6 right-6 bg-emerald-600 text-white p-3 rounded-full shadow-lg opacity-0 pointer-events-none transition-all duration-300 hover:bg-emerald-700 focus:outline-none z-50">
+    ▲
+  </button>
 
   <script>
     let plants = JSON.parse(localStorage.getItem('plants')) || [];
+    let lastEditedName = null; // 編集直後の植物名を追跡
 
-    // 初期化：本日の日付をデフォルト入力
-    document.getElementById('lastWatered').valueToDate = new Date();
-    document.getElementById('lastWatered').value = new Date().toISOString().substring(0, 10);
+    // 本日の日付を YYYY-MM-DD 形式で取得する関数（常に現在日付）
+    function getTodayString() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    // 初期化：本日の日付をセット
+    document.getElementById('lastWatered').value = getTodayString();
 
     // データ保存
     function savePlantsToStorage() {
@@ -104,24 +142,44 @@
       return date;
     }
 
-    // リストの描画（近い順ソート機能付き）
+    // リストの描画（並び替え機能対応）
     function renderList() {
       const listEl = document.getElementById('plantList');
       listEl.innerHTML = '';
 
-      // 1. 次回水やり日が「近い順（昇順）」にソート
-      plants.sort((a, b) => {
-        const nextA = getNextWaterDate(a.lastWatered, a.interval);
-        const nextB = getNextWaterDate(b.lastWatered, b.interval);
-        return nextA - nextB;
+      // データに id（作成日時タイムスタンプ）がなければ付与する互換性処理
+      plants.forEach(p => {
+        if (!p.id) p.id = Date.now() + Math.random();
       });
+
+      // 並び替え処理
+      const sortMode = document.getElementById('sortMode').value;
+      let displayPlants = [...plants];
+
+      if (sortMode === 'nextDate') {
+        // 次回水やり日が近い順
+        displayPlants.sort((a, b) => {
+          const nextA = getNextWaterDate(a.lastWatered, a.interval);
+          const nextB = getNextWaterDate(b.lastWatered, b.interval);
+          return nextA - nextB;
+        });
+      } else if (sortMode === 'name') {
+        // 名前順 (あいうえお順 / アルファベット順)
+        displayPlants.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+      } else if (sortMode === 'created') {
+        // 登録順 (idの昇順)
+        displayPlants.sort((a, b) => a.id - b.id);
+      }
 
       let normalSum = 0;
       let maxSoak = 0;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      plants.forEach((plant, index) => {
+      displayPlants.forEach((plant) => {
+        // 元の配列におけるインデックスを検索
+        const originalIndex = plants.findIndex(p => p.id === plant.id);
+
         const nextDate = getNextWaterDate(plant.lastWatered, plant.interval);
         nextDate.setHours(0, 0, 0, 0);
         
@@ -131,7 +189,7 @@
         // 本日水やりが必要な場合の計算
         if (diffDays <= 0) {
           if (plant.isSoak) {
-            if (plant.waterAmount > maxSoak) maxSoak = parseInt(plant.waterAmount);
+            if (parseInt(plant.waterAmount) > maxSoak) maxSoak = parseInt(plant.waterAmount);
           } else {
             normalSum += parseInt(plant.waterAmount);
           }
@@ -149,7 +207,8 @@
         }
 
         const card = document.createElement('div');
-        card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative";
+        card.id = `plant-card-${encodeURIComponent(plant.name)}`;
+        card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative transition-all";
         card.innerHTML = `
           <div class="flex justify-between items-start mb-2">
             <div>
@@ -168,11 +227,11 @@
           </div>
 
           <div class="flex gap-2 pt-2 border-t border-slate-50">
-            <button onclick="waterNow(${index})" class="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold py-1.5 rounded transition">
+            <button onclick="waterNow(${originalIndex})" class="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold py-1.5 rounded transition">
               💧 今日水やりした
             </button>
-            <button onclick="editPlant(${index})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1.5 rounded">編集</button>
-            <button onclick="deletePlant(${index})" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1.5 rounded">削除</button>
+            <button onclick="editPlant(${originalIndex})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1.5 rounded">編集</button>
+            <button onclick="deletePlant(${originalIndex})" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1.5 rounded">削除</button>
           </div>
         `;
         listEl.appendChild(card);
@@ -182,21 +241,59 @@
       document.getElementById('normalWater').innerText = normalSum;
       document.getElementById('maxSoak').innerText = maxSoak;
       document.getElementById('totalWater').innerText = normalSum + maxSoak;
+
+      // 編集後の要素へのスクロール＆強調処理
+      if (lastEditedName) {
+        setTimeout(() => {
+          const targetCard = document.getElementById(`plant-card-${encodeURIComponent(lastEditedName)}`);
+          if (targetCard) {
+            targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            targetCard.classList.add('card-highlight');
+          }
+          lastEditedName = null;
+        }, 100);
+      }
     }
 
-    // 今日の水やり完了処理
+    // 今日の水やり完了処理（単体）
     function waterNow(index) {
-      const todayStr = new Date().toISOString().substring(0, 10);
-      plants[index].lastWatered = todayStr;
+      plants[index].lastWatered = getTodayString();
+      lastEditedName = plants[index].name;
       savePlantsToStorage();
+    }
+
+    // 本日の水やりをすべて完了
+    function waterAllToday() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let count = 0;
+
+      plants.forEach(plant => {
+        const nextDate = getNextWaterDate(plant.lastWatered, plant.interval);
+        nextDate.setHours(0, 0, 0, 0);
+        if (nextDate <= today) {
+          plant.lastWatered = getTodayString();
+          count++;
+        }
+      });
+
+      if (count > 0) {
+        savePlantsToStorage();
+        alert(`${count}件の植物の水やりを完了しました！`);
+      } else {
+        alert("本日水やりが必要な植物はありません。");
+      }
     }
 
     // フォーム送信（新規保存・編集更新）
     function savePlant(e) {
       e.preventDefault();
       const index = parseInt(document.getElementById('editIndex').value);
+      const name = document.getElementById('name').value;
+      
       const data = {
-        name: document.getElementById('name').value,
+        id: index === -1 ? Date.now() : plants[index].id,
+        name: name,
         interval: parseInt(document.getElementById('interval').value),
         waterAmount: parseInt(document.getElementById('waterAmount').value),
         lastWatered: document.getElementById('lastWatered').value,
@@ -209,11 +306,12 @@
         plants[index] = data;
       }
 
+      lastEditedName = name; // スクロール対象として保持
       resetForm();
       savePlantsToStorage();
     }
 
-    // 編集モーダル・フォームの呼出
+    // 編集フォーム呼び出し
     function editPlant(index) {
       const p = plants[index];
       document.getElementById('name').value = p.name;
@@ -226,7 +324,8 @@
       document.getElementById('formTitle').innerText = "植物の編集";
       document.getElementById('submitBtn').innerText = "更新する";
       document.getElementById('cancelBtn').classList.remove('hidden');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      document.getElementById('plantForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     // 削除処理
@@ -241,18 +340,35 @@
     function resetForm() {
       document.getElementById('plantForm').reset();
       document.getElementById('editIndex').value = "-1";
-      document.getElementById('lastWatered').value = new Date().toISOString().substring(0, 10);
+      document.getElementById('lastWatered').value = getTodayString();
       document.getElementById('formTitle').innerText = "新しい植物を追加";
       document.getElementById('submitBtn').innerText = "登録する";
       document.getElementById('cancelBtn').classList.add('hidden');
     }
+
+    // トップに戻るスクロール
+    function scrollToTop() {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // スクロール量に応じて「トップに戻る」ボタンを表示
+    window.addEventListener('scroll', () => {
+      const topBtn = document.getElementById('scrollToTopBtn');
+      if (window.scrollY > 300) {
+        topBtn.classList.remove('opacity-0', 'pointer-events-none');
+        topBtn.classList.add('opacity-100');
+      } else {
+        topBtn.classList.remove('opacity-100');
+        topBtn.classList.add('opacity-0', 'pointer-events-none');
+      }
+    });
 
     // データ出力 (Export)
     function exportData() {
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(plants, null, 2));
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `plant_data_${new Date().toISOString().substring(0, 10)}.json`);
+      downloadAnchor.setAttribute("download", `plant_data_${getTodayString()}.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
