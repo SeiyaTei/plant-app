@@ -1,276 +1,354 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>植物の水やりチェッカー</title>
-    <!-- PWA設定 -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#059669">
-    <link rel="apple-touch-icon" href="https://via.placeholder.com/192/059669/ffffff?text=Plant">
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>植物水やり管理ダッシュボード</title>
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-100 min-h-screen pb-12">
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen pb-12">
 
-    <!-- ヘッダー -->
-    <header class="bg-emerald-700 text-white p-4 shadow-md sticky top-0 z-10">
-        <div class="max-w-md mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold flex items-center gap-2">
-                <span>🌱</span> 植物の水やりチェッカー
-            </h1>
+  <!-- ヘッダー -->
+  <header class="bg-emerald-600 text-white p-4 shadow-md sticky top-0 z-10">
+    <div class="max-w-md mx-auto flex justify-between items-center">
+      <h1 class="text-xl font-bold flex items-center gap-2">
+        <span>🌱</span> 植物水やり管理
+      </h1>
+      <div class="flex gap-2">
+        <button onclick="exportData()" class="bg-emerald-700 hover:bg-emerald-800 text-xs px-2.5 py-1.5 rounded flex items-center gap-1 border border-emerald-500">
+          💾 セーブ
+        </button>
+        <label class="bg-emerald-700 hover:bg-emerald-800 text-xs px-2.5 py-1.5 rounded flex items-center gap-1 border border-emerald-500 cursor-pointer">
+          📂 ロード
+          <input type="file" id="importFile" onchange="importData(event)" class="hidden" accept=".json">
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-md mx-auto p-4 space-y-4">
+
+    <!-- 本日の水やり要約 & 総水量カード -->
+    <section class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+      <h2 class="text-sm font-semibold text-slate-500 mb-2">本日の水やりステータス</h2>
+      
+      <div class="grid grid-cols-2 gap-3 text-center mb-3">
+        <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+          <div class="text-xs text-slate-500">水やり対象</div>
+          <div id="todayCount" class="text-2xl font-bold text-emerald-600">0 <span class="text-xs text-slate-500 font-normal">鉢</span></div>
         </div>
-    </header>
+        <div class="bg-blue-50 p-2.5 rounded-lg border border-blue-100">
+          <div class="text-xs text-blue-600 font-medium">本日必要水量</div>
+          <div id="todayWaterVolume" class="text-2xl font-bold text-blue-600">0 <span class="text-xs text-blue-500 font-normal">L</span></div>
+        </div>
+      </div>
 
-    <main class="max-w-md mx-auto p-4 space-y-6">
+      <div id="waterBreakdown" class="text-xs text-slate-500 bg-slate-50 p-2.5 rounded border border-slate-200 hidden">
+        <!-- 内訳の動的表示 -->
+      </div>
+    </section>
 
-        <!-- 植物追加フォーム -->
-        <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-            <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                ➕ 新しい植物を追加
-            </h2>
-            <form id="plantForm" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">植物の名前</label>
-                    <input type="text" id="plantName" placeholder="例: パキラ" required
-                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800">
-                </div>
-                
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-500 mb-1">水やり間隔 (日数)</label>
-                        <input type="number" id="waterInterval" placeholder="例: 7" min="1" required
-                            class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-500 mb-1">前回の水やり日</label>
-                        <input type="date" id="lastWatered" required
-                            class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800">
-                    </div>
-                </div>
+    <!-- 植物追加・編集フォーム -->
+    <section class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+      <h2 id="formTitle" class="text-base font-bold text-slate-700 mb-3">新しい植物を登録</h2>
+      <form id="plantForm" onsubmit="savePlant(event)" class="space-y-3">
+        <input type="hidden" id="plantId">
+        
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">植物の名前</label>
+          <input type="text" id="plantName" required placeholder="例: パキラ" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm">
+        </div>
 
-                <button type="submit" 
-                    class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-[0.98]">
-                    ＋ 植物を追加する
-                </button>
-            </form>
-        </section>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">水やり間隔 (日)</label>
+            <input type="number" id="waterInterval" required min="1" value="7" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">水量 (L)</label>
+            <input type="number" id="waterAmount" step="0.1" min="0" value="1.0" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm">
+          </div>
+        </div>
 
-        <!-- 植物一覧 -->
-        <section>
-            <div class="flex justify-between items-center mb-3">
-                <h2 class="text-lg font-bold text-slate-800">植物一覧</h2>
-                <span id="plantCount" class="text-xs font-semibold text-slate-500 bg-slate-200 px-2 py-1 rounded-full">全 0 つ</span>
-            </div>
-            
-            <div id="plantList" class="space-y-3">
-                <!-- JavaScriptでここにカードが追加されます -->
-            </div>
-        </section>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">水やり方法</label>
+          <select id="waterType" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm bg-white">
+            <option value="normal">通常（上から給水）</option>
+            <option value="dobu">ドブ漬け（浸水）</option>
+          </select>
+        </div>
 
-    </main>
+        <div class="flex gap-2 pt-1">
+          <button type="submit" id="submitBtn" class="flex-1 bg-emerald-600 text-white font-semibold py-2 rounded-lg hover:bg-emerald-700 transition text-sm">
+            登録する
+          </button>
+          <button type="button" id="cancelBtn" onclick="resetForm()" class="hidden bg-slate-200 text-slate-600 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300 transition text-sm">
+            キャンセル
+          </button>
+        </div>
+      </form>
+    </section>
 
-    <script>
-        // PWA ServiceWorker登録
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch(() => {});
+    <!-- 植物一覧 -->
+    <section>
+      <h2 class="text-base font-bold text-slate-700 mb-2">管理中の植物一覧</h2>
+      <div id="plantList" class="space-y-3">
+        <!-- JSで動的生成 -->
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    let plants = [];
+
+    // 初期化処理（既存データの引き継ぎ＆安全処理）
+    function init() {
+      const data = localStorage.getItem('plantsData');
+      if (data) {
+        try {
+          const parsed = JSON.parse(data);
+          // 既存データに新フィールドがない場合のデフォルト値補完
+          plants = parsed.map(p => ({
+            id: p.id || Date.now() + Math.random(),
+            name: p.name || '名称未設定',
+            interval: Number(p.interval) || 7,
+            lastWatered: p.lastWatered || new Date().toISOString().split('T')[0],
+            amount: p.amount !== undefined ? Number(p.amount) : 1.0, // なければデフォルト1L
+            type: p.type || 'normal' // なければデフォルト「通常」
+          }));
+        } catch (e) {
+          console.error("データ読み込みエラー", e);
+          plants = [];
         }
+      }
+      saveToStorage();
+      render();
+    }
 
-        let plants = JSON.parse(localStorage.getItem('myPlants')) || [];
-        let editingId = null;
+    // localStorageへの保存
+    function saveToStorage() {
+      localStorage.setItem('plantsData', JSON.stringify(plants));
+    }
 
-        // 今日の日付を初期値にセット
-        document.getElementById('lastWatered').valueAsDate = new Date();
+    // 日付計算ヘルパー（今日から何日後・何日前か）
+    function getDaysDiff(dateString) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const target = new Date(dateString);
+      target.setHours(0, 0, 0, 0);
+      const diffTime = today - target;
+      return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    }
 
-        const plantForm = document.getElementById('plantForm');
-        const plantList = document.getElementById('plantList');
+    // 植物の保存（追加・編集）
+    function savePlant(e) {
+      e.preventDefault();
+      const id = document.getElementById('plantId').value;
+      const name = document.getElementById('plantName').value;
+      const interval = Number(document.getElementById('waterInterval').value);
+      const amount = Number(document.getElementById('waterAmount').value);
+      const type = document.getElementById('waterType').value;
 
-        // 追加処理
-        plantForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const name = document.getElementById('plantName').value;
-            const interval = parseInt(document.getElementById('waterInterval').value);
-            const lastWatered = document.getElementById('lastWatered').value;
-
-            const newPlant = {
-                id: Date.now(),
-                name: name,
-                interval: interval,
-                lastWatered: lastWatered
-            };
-
-            plants.push(newPlant);
-            saveAndRender();
-
-            document.getElementById('plantName').value = '';
-            document.getElementById('waterInterval').value = '';
-            document.getElementById('lastWatered').valueAsDate = new Date();
-        });
-
-        // 保存と再描画
-        function saveAndRender() {
-            localStorage.setItem('myPlants', JSON.stringify(plants));
-            renderPlants();
+      if (id) {
+        // 編集
+        const index = plants.findIndex(p => p.id == id);
+        if (index !== -1) {
+          plants[index].name = name;
+          plants[index].interval = interval;
+          plants[index].amount = amount;
+          plants[index].type = type;
         }
+      } else {
+        // 新規追加
+        const newPlant = {
+          id: Date.now(),
+          name: name,
+          interval: interval,
+          amount: amount,
+          type: type,
+          lastWatered: new Date().toISOString().split('T')[0]
+        };
+        plants.push(newPlant);
+      }
 
-        // 水やり完了処理
-        function waterPlant(id) {
-            const today = new Date().toISOString().split('T')[0];
-            plants = plants.map(plant => {
-                if (plant.id === id) {
-                    return { ...plant, lastWatered: today };
-                }
-                return plant;
-            });
-            saveAndRender();
-        }
+      saveToStorage();
+      resetForm();
+      render();
+    }
 
-        // 削除処理
-        function deletePlant(id) {
-            if (confirm('本当に削除しますか？')) {
-                plants = plants.filter(plant => plant.id !== id);
-                saveAndRender();
+    // 水やり実行処理
+    function waterPlant(id) {
+      const plant = plants.find(p => p.id == id);
+      if (plant) {
+        plant.lastWatered = new Date().toISOString().split('T')[0];
+        saveToStorage();
+        render();
+      }
+    }
+
+    // 削除処理
+    function deletePlant(id) {
+      if (confirm('この植物を削除してもよろしいですか？')) {
+        plants = plants.filter(p => p.id != id);
+        saveToStorage();
+        render();
+      }
+    }
+
+    // 編集フォームの準備
+    function editPlant(id) {
+      const plant = plants.find(p => p.id == id);
+      if (!plant) return;
+
+      document.getElementById('plantId').value = plant.id;
+      document.getElementById('plantName').value = plant.name;
+      document.getElementById('waterInterval').value = plant.interval;
+      document.getElementById('waterAmount').value = plant.amount;
+      document.getElementById('waterType').value = plant.type;
+
+      document.getElementById('formTitle').textContent = '植物情報を編集';
+      document.getElementById('submitBtn').textContent = '更新する';
+      document.getElementById('cancelBtn').classList.remove('hidden');
+      
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // フォームリセット
+    function resetForm() {
+      document.getElementById('plantId').value = '';
+      document.getElementById('plantForm').reset();
+      document.getElementById('formTitle').textContent = '新しい植物を登録';
+      document.getElementById('submitBtn').textContent = '登録する';
+      document.getElementById('cancelBtn').classList.add('hidden');
+    }
+
+    // レンダリング（画面描画 & 水量計算）
+    function render() {
+      const plantList = document.getElementById('plantList');
+      plantList.innerHTML = '';
+
+      let todayWaterCount = 0;
+      let normalWaterTotal = 0;
+      let dobuMaxWater = 0;
+      let dobuCount = 0;
+
+      plants.forEach(plant => {
+        const daysPassed = getDaysDiff(plant.lastWatered);
+        const isDue = daysPassed >= plant.interval;
+
+        // 本日水やり対象の集計
+        if (isDue) {
+          todayWaterCount++;
+          if (plant.type === 'dobu') {
+            dobuCount++;
+            if (plant.amount > dobuMaxWater) {
+              dobuMaxWater = plant.amount;
             }
+          } else {
+            normalWaterTotal += plant.amount;
+          }
         }
 
-        // 編集モードに入る
-        function startEdit(id) {
-            editingId = id;
-            renderPlants();
-        }
+        // カード描画
+        const card = document.createElement('div');
+        card.className = `p-4 rounded-xl shadow-sm border ${isDue ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200'} transition`;
 
-        // 編集のキャンセル
-        function cancelEdit() {
-            editingId = null;
-            renderPlants();
-        }
+        card.innerHTML = `
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <h3 class="font-bold text-slate-800 text-base">${plant.name}</h3>
+              <div class="flex gap-2 text-xs text-slate-500 mt-0.5">
+                <span>水やり間隔: ${plant.interval}日ごと</span>
+                <span>・</span>
+                <span class="${plant.type === 'dobu' ? 'text-indigo-600 font-semibold' : ''}">${plant.type === 'dobu' ? '🪣 ドブ漬け' : '🚿 通常'} (${plant.amount}L)</span>
+              </div>
+            </div>
+            <span class="text-xs font-semibold px-2 py-1 rounded-full ${isDue ? 'bg-amber-200 text-amber-800' : 'bg-slate-100 text-slate-600'}">
+              ${isDue ? '水やり時期！' : `あと ${plant.interval - daysPassed} 日`}
+            </span>
+          </div>
 
-        // 編集の保存
-        function saveEdit(id) {
-            const name = document.getElementById(`edit-name-${id}`).value;
-            const interval = parseInt(document.getElementById(`edit-interval-${id}`).value);
-            const lastWatered = document.getElementById(`edit-last-${id}`).value;
+          <div class="text-xs text-slate-500 mb-3">
+            前回水やり: ${plant.lastWatered} (${daysPassed === 0 ? '今日' : daysPassed + '日前'})
+          </div>
 
-            if (!name || !interval || !lastWatered) return alert("すべて入力してください");
+          <div class="flex gap-2 border-t pt-3 border-slate-100">
+            <button onclick="waterPlant(${plant.id})" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-1.5 rounded transition">
+              💧 水やり完了
+            </button>
+            <button onclick="editPlant(${plant.id})" class="px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold py-1.5 rounded transition">
+              編集
+            </button>
+            <button onclick="deletePlant(${plant.id})" class="px-3 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold py-1.5 rounded transition">
+              削除
+            </button>
+          </div>
+        `;
 
-            plants = plants.map(p => {
-                if (p.id === id) {
-                    return { ...p, name, interval, lastWatered };
-                }
-                return p;
-            });
+        plantList.appendChild(card);
+      });
 
-            editingId = null;
-            saveAndRender();
-        }
+      // 本日の総水量計算（通常合計 ＋ ドブ漬け最大値）
+      const totalVolume = normalWaterTotal + dobuMaxWater;
+      document.getElementById('todayCount').innerHTML = `${todayWaterCount} <span class="text-xs text-slate-500 font-normal">鉢</span>`;
+      document.getElementById('todayWaterVolume').innerHTML = `${totalVolume.toFixed(1)} <span class="text-xs text-blue-500 font-normal">L</span>`;
 
-        // 描画メイン処理
-        function renderPlants() {
-            document.getElementById('plantCount').textContent = `全 ${plants.length} つ`;
-            plantList.innerHTML = '';
+      // 内訳表示の更新
+      const breakdownEl = document.getElementById('waterBreakdown');
+      if (todayWaterCount > 0) {
+        breakdownEl.classList.remove('hidden');
+        breakdownEl.innerHTML = `
+          <strong>【水やり内訳】</strong><br>
+          ・通常給水: ${normalWaterTotal.toFixed(1)} L<br>
+          ・ドブ漬け: ${dobuMaxWater.toFixed(1)} L （${dobuCount}鉢中、最大水量を採用）
+        `;
+      } else {
+        breakdownEl.classList.add('hidden');
+      }
+    }
 
-            if (plants.length === 0) {
-                plantList.innerHTML = `
-                    <div class="text-center py-8 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-300">
-                        植物が登録されていません
-                    </div>`;
-                return;
+    // --- セーブ（エクスポート）機能 ---
+    function exportData() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(plants, null, 2));
+      const downloadAnchor = document.createElement('a');
+      const date = new Date().toISOString().split('T')[0];
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `plant_data_${date}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    // --- ロード（インポート）機能 ---
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (Array.isArray(imported)) {
+            if (confirm('現在のデータを上書きして復元しますか？')) {
+              plants = imported;
+              saveToStorage();
+              init();
+              alert('データを正常に復元しました！');
             }
-
-            // 日付計算と並び替え（期限切れ・今日が一番上）
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            const processedPlants = plants.map(plant => {
-                const last = new Date(plant.lastWatered);
-                last.setHours(0, 0, 0, 0);
-                
-                const next = new Date(last);
-                next.setDate(next.getDate() + parseInt(plant.interval));
-
-                const diffTime = next - today;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                return { ...plant, nextDate: next, diffDays: diffDays };
-            });
-
-            // 優先度順にソート (diffDaysが小さい順)
-            processedPlants.sort((a, b) => a.diffDays - b.diffDays);
-
-            processedPlants.forEach(plant => {
-                const card = document.createElement('div');
-                
-                // 編集中のカード
-                if (editingId === plant.id) {
-                    card.className = "bg-white p-4 rounded-2xl shadow-md border-2 border-emerald-500 space-y-3";
-                    card.innerHTML = `
-                        <div class="text-xs font-bold text-emerald-600">📝 植物情報の編集</div>
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1">名前</label>
-                            <input type="text" id="edit-name-${plant.id}" value="${plant.name}" class="w-full p-2 bg-slate-50 border rounded-lg text-sm">
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="block text-xs text-slate-400 mb-1">間隔 (日)</label>
-                                <input type="number" id="edit-interval-${plant.id}" value="${plant.interval}" class="w-full p-2 bg-slate-50 border rounded-lg text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs text-slate-400 mb-1">前回水やり日</label>
-                                <input type="date" id="edit-last-${plant.id}" value="${plant.lastWatered}" class="w-full p-2 bg-slate-50 border rounded-lg text-sm">
-                            </div>
-                        </div>
-                        <div class="flex gap-2 pt-1">
-                            <button onclick="saveEdit(${plant.id})" class="flex-1 bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg">保存</button>
-                            <button onclick="cancelEdit()" class="bg-slate-200 text-slate-600 text-xs font-bold px-3 py-2 rounded-lg">キャンセル</button>
-                        </div>
-                    `;
-                    plantList.appendChild(card);
-                    return;
-                }
-
-                // 通常表示のカード
-                let statusBadge = '';
-                let cardBorder = 'border-slate-200';
-
-                if (plant.diffDays < 0) {
-                    statusBadge = `<span class="bg-rose-100 text-rose-600 text-xs font-bold px-2.5 py-1 rounded-full">超過 ${Math.abs(plant.diffDays)}日！</span>`;
-                    cardBorder = 'border-rose-300 bg-rose-50/30';
-                } else if (plant.diffDays === 0) {
-                    statusBadge = `<span class="bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full">今日が水やり日！</span>`;
-                    cardBorder = 'border-amber-300 bg-amber-50/30';
-                } else {
-                    statusBadge = `<span class="bg-emerald-50 text-emerald-600 text-xs font-semibold px-2.5 py-1 rounded-full">あと ${plant.diffDays}日</span>`;
-                }
-
-                card.className = `bg-white p-4 rounded-2xl shadow-sm border ${cardBorder} flex flex-col justify-between gap-3`;
-                card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h3 class="font-bold text-slate-800 text-lg">${plant.name}</h3>
-                            <p class="text-xs text-slate-400 mt-0.5">
-                                間隔: ${plant.interval}日ごと | 前回: ${plant.lastWatered}
-                            </p>
-                        </div>
-                        ${statusBadge}
-                    </div>
-                    
-                    <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                        <div class="flex gap-1">
-                            <button onclick="startEdit(${plant.id})" class="text-slate-400 hover:text-slate-600 p-1.5 text-xs">✏️ 編集</button>
-                            <button onclick="deletePlant(${plant.id})" class="text-slate-300 hover:text-rose-500 p-1.5 text-xs">🗑️ 削除</button>
-                        </div>
-                        <button onclick="waterPlant(${plant.id})" 
-                            class="bg-sky-500 hover:bg-sky-600 active:scale-95 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm transition-all flex items-center gap-1">
-                            💧 水をあげた！
-                        </button>
-                    </div>
-                `;
-                plantList.appendChild(card);
-            });
+          } else {
+            alert('正しいファイル形式ではありません。');
+          }
+        } catch (err) {
+          alert('ファイルの読み込みに失敗しました。');
         }
+      };
+      reader.readAsText(file);
+    }
 
-        // 初期描画
-        renderPlants();
-    </script>
+    // 起動時実行
+    init();
+  </script>
 </body>
 </html>
