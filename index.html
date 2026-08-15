@@ -238,10 +238,20 @@
     }
 
     function waterNow(index) { plants[index].lastWatered = getTodayString(); lastEditedName = plants[index].name; savePlantsToStorage(); }
+    
+    // 修正: 判定ロジックを画面描画と同じ diffDays <= 0 に統一
     function waterAllToday() {
       const today = new Date(); today.setHours(0,0,0,0);
       let count = 0;
-      plants.forEach(p => { if (getNextWaterDate(p.lastWatered, p.interval) <= today) { p.lastWatered = getTodayString(); count++; }});
+      plants.forEach(p => { 
+        const nextDate = getNextWaterDate(p.lastWatered, p.interval);
+        nextDate.setHours(0,0,0,0);
+        const diffDays = Math.ceil((nextDate - today) / (1000 * 60 * 60 * 24));
+        if (diffDays <= 0) { 
+          p.lastWatered = getTodayString(); 
+          count++; 
+        }
+      });
       if (count > 0) { savePlantsToStorage(); alert(`${count}件完了しました`); } else alert("対象なし");
     }
 
