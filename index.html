@@ -48,7 +48,7 @@
     </button>
     <label class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-2 px-3 rounded-lg font-bold transition text-center cursor-pointer">
       📥 インポート (ロード)
-      <input type="file" id="importFile" accept=".json,application/json" onchange="importData(event)" class="hidden">
+      <input type="file" id="importFile" accept=".json,text/plain,application/json,*/*" onchange="importData(event)" class="hidden">
     </label>
   </div>
 
@@ -425,18 +425,21 @@
       }
     });
 
-    // データ出力 (Export)
+    // データ出力 (Export) - Blob方式に修正
     function exportData() {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(plants, null, 2));
+      const jsonStr = JSON.stringify(plants, null, 2);
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
       const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `plant_data_${getTodayString()}.json`);
+      downloadAnchor.href = url;
+      downloadAnchor.download = `plant_data_${getTodayString()}.json`;
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
-      downloadAnchor.remove();
+      document.body.removeChild(downloadAnchor);
+      URL.revokeObjectURL(url);
     }
 
-    // データ読み込み (Import) - 強化版
+    // データ読み込み (Import)
     function importData(e) {
       const file = e.target.files[0];
       if (!file) return;
