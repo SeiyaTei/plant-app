@@ -79,14 +79,14 @@
   </div>
 
   <!-- 登録・編集フォーム -->
-  <form id="plantForm" class="bg-white p-4 rounded-xl shadow-md mb-6 border border-slate-200">
+  <div class="bg-white p-4 rounded-xl shadow-md mb-6 border border-slate-200">
     <h2 id="formTitle" class="text-sm font-bold mb-3 text-slate-700">新しい植物を追加 / 編集</h2>
     <input type="hidden" id="editIndex" value="-1">
     <input type="hidden" id="imageData" value="">
     
     <div class="mb-3">
       <label class="block text-xs font-semibold text-slate-500 mb-1">植物の名前 <span class="text-rose-500">*</span></label>
-      <input type="text" id="name" placeholder="例: パキラ" required class="w-full border rounded-lg p-2 text-sm focus:outline-emerald-500">
+      <input type="text" id="name" placeholder="例: パキラ" class="w-full border rounded-lg p-2 text-sm focus:outline-emerald-500">
     </div>
 
     <!-- 写真選択エリア -->
@@ -128,14 +128,14 @@
     </div>
 
     <div class="flex gap-2">
-      <button type="submit" id="submitBtn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-sm transition">
+      <button type="button" id="submitBtn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-sm transition">
         登録する
       </button>
       <button type="button" id="cancelBtn" class="hidden bg-slate-300 text-slate-700 font-bold py-2 px-3 rounded-lg text-sm">
         キャンセル
       </button>
     </div>
-  </form>
+  </div>
 
   <!-- 植物一覧ヘッダー -->
   <div class="mb-2 flex justify-between items-center">
@@ -158,17 +158,6 @@
   </button>
 
   <script>
-    if ('serviceWorker' in navigator) {
-      const swCode = `
-        self.addEventListener('install', () => self.skipWaiting());
-        self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
-        self.addEventListener('fetch', e => e.respondWith(fetch(e.request)));
-      `;
-      const blob = new Blob([swCode], { type: 'application/javascript' });
-      const swUrl = URL.createObjectURL(blob);
-      navigator.serviceWorker.register(swUrl).catch(() => {});
-    }
-
     let plants = [];
 
     function getTodayString() {
@@ -193,9 +182,13 @@
       try {
         const stored = localStorage.getItem('plants');
         if (stored) {
-          plants = JSON.parse(stored).map(normalizePlant).filter(Boolean);
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            plants = parsed.map(normalizePlant).filter(Boolean);
+          }
         }
       } catch (e) {
+        console.error("ロードエラー:", e);
         plants = [];
       }
     }
@@ -223,7 +216,7 @@
       if (!listEl) return;
       listEl.innerHTML = '';
 
-      const sortMode = document.getElementById('sortMode').value;
+      const sortMode = document.getElementById('sortMode')?.value || 'nextDate';
       let displayPlants = [...plants];
 
       if (sortMode === 'nextDate') {
@@ -337,7 +330,7 @@
       document.getElementById('submitBtn').innerText = "更新する";
       document.getElementById('cancelBtn').classList.remove('hidden');
 
-      document.getElementById('plantForm').scrollIntoView({ behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function deletePlant(idx) {
@@ -361,9 +354,55 @@
       document.getElementById('cancelBtn').classList.add('hidden');
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    // 登録・更新のメイン処理
+    function handleSavePlant() {
+      const nameInput = document.getElementById('name');
+      const name = nameInput.value.trim();
+      if (!name) {
+        alert("植物の名前を入力してください");
+        nameInput.focus();
+        return;
+      }
+
+      const idx = parseInt(document.getElementById('editIndex').value, 10);
+      const targetId = (idx !== -1 && plants[idx]) ? plants[idx].id : (Date.now() + Math.random());
+
+      const data = {
+        id: targetId,
+        name: name,
+        interval: parseInt(document.getElementById('interval').value, 10) || 7,
+        waterAmount: parseFloat(document.getElementById('waterAmount').value) || 0.5,
+        lastWatered: document.getElementById('lastWatered').value || getTodayString(),
+        isSoak: document.getElementById('isSoak').checked,
+        image: document.getElementById('imageData').value || null
+      };
+
+      if (idx === -1 || !plants[idx]) {
+        plants.push(data);
+      } else {
+        plants[idx] = data;
+      }
+
+      resetForm();
+      savePlants();
+
+      setTimeout(() => {
+        const cardEl = document.getElementById(`plant-card-${targetId}`);
+        if (cardEl) {
+          cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          cardEl.classList.add('card-highlight');
+          setTimeout(() => cardEl.classList.remove('card-highlight'), 2500);
+        }
+      }, 100);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
       loadPlants();
       resetForm();
+
+      // ボタンの直接クリックイベント設定
+      document.getElementById('submitBtn').addEventListener('click', handleSavePlant);
+      document.getElementById('cancelBtn').addEventListener('click', resetForm);
 
       const topBtn = document.getElementById('scrollToTopBtn');
       window.addEventListener('scroll', () => {
@@ -401,44 +440,14 @@
         document.getElementById('formImageInput').value = '';
       });
 
-      // フォーム送信処理（登録・更新）
-      document.getElementById('plantForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = document.getElementById('name').value.trim();
-        if (!name) return;
-
-        const idx = parseInt(document.getElementById('editIndex').value, 10);
-        const targetId = idx === -1 ? (Date.now() + Math.random()) : plants[idx].id;
-
-        const data = {
-          id: targetId,
-          name: name,
-          interval: parseInt(document.getElementById('interval').value, 10) || 7,
-          waterAmount: parseFloat(document.getElementById('waterAmount').value) || 0.5,
-          lastWatered: document.getElementById('lastWatered').value || getTodayString(),
-          isSoak: document.getElementById('isSoak').checked,
-          image: document.getElementById('imageData').value || null
-        };
-
-        if (idx === -1) plants.push(data);
-        else plants[idx] = data;
-
-        resetForm();
-        savePlants();
-
-        setTimeout(() => {
-          const cardEl = document.getElementById(`plant-card-${targetId}`);
-          if (cardEl) {
-            cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            cardEl.classList.add('card-highlight');
-            setTimeout(() => cardEl.classList.remove('card-highlight'), 2500);
-          }
-        }, 100);
-      });
-
-      document.getElementById('cancelBtn').addEventListener('click', resetForm);
       document.getElementById('sortMode').addEventListener('change', renderList);
 
       document.getElementById('waterAllBtn').addEventListener('click', () => {
         const todayStr = getTodayString();
-        plants.forEach(p => p.last
+        plants.forEach(p => p.lastWatered = todayStr);
+        savePlants();
+        alert("本日の水やりをすべて完了しました！");
+      });
+
+      document.getElementById('exportBtn').addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(plants, null, 2)], { type: "application/js
