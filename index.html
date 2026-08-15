@@ -175,14 +175,16 @@
     let lastEditedName = null;
     let currentTargetPlantIndex = null;
 
+    // 本日の日付文字列(YYYY-MM-DD)を取得する堅牢な関数
     function getTodayString() {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     }
 
+    // データ規格化
     function normalizePlant(item) {
       if (!item || typeof item !== 'object') return null;
 
@@ -194,7 +196,10 @@
       if (isNaN(waterAmount)) waterAmount = 0.5;
       if (waterAmount >= 10) waterAmount = parseFloat((waterAmount / 1000).toFixed(2));
 
-      let lastWatered = item.lastWatered || item.lastWateredDate || item.date || getTodayString();
+      let lastWatered = item.lastWatered || item.lastWateredDate || item.date;
+      if (!lastWatered || String(lastWatered).trim() === '') {
+        lastWatered = getTodayString();
+      }
 
       return {
         id: item.id || (Date.now() + Math.random()),
@@ -207,6 +212,7 @@
       };
     }
 
+    // 画像圧縮処理（長辺300px・クオリティ0.6で超軽量化）
     function compressImage(file, callback) {
       const reader = new FileReader();
       reader.onload = function(e) {
@@ -215,7 +221,7 @@
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
-          const maxDim = 400;
+          const maxDim = 300;
 
           if (width > height) {
             if (width > maxDim) {
@@ -234,8 +240,11 @@
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
           callback(dataUrl);
+        };
+        img.onerror = function() {
+          alert("画像の解析に失敗しました。");
         };
         img.src = e.target.result;
       };
@@ -281,6 +290,7 @@
       input.value = '';
     }
 
+    // ローカルストレージ読み込み
     function loadPlantsFromStorage() {
       try {
         const stored = localStorage.getItem('plants');
@@ -296,18 +306,24 @@
       }
     }
 
+    // ローカルストレージ保存（容量オーバー対策つき）
     function savePlantsToStorage() {
       try {
         localStorage.setItem('plants', JSON.stringify(plants));
       } catch (err) {
-        console.error("ストレージ保存エラー:", err);
-        alert("ストレージ容量上限に達した可能性があります。画像を減らすか整理してください。");
+        console.error("ストレージ保存失敗（容量制限などの可能性があります）:", err);
+        alert("端末の保存容量を超えたため画像なしで保存を試みます。");
+        // 最悪の場合画像をクリアしてテキストデータだけ守る
+        try {
+          const safePlants = plants.map(p => ({ ...p, image: null }));
+          localStorage.setItem('plants', JSON.stringify(safePlants));
+          plants = safePlants;
+        } catch (e) {
+          alert("保存に失敗しました。データを整理してください。");
+        }
       }
       renderList();
     }
-
-    loadPlantsFromStorage();
-    document.getElementById('lastWatered').value = getTodayString();
 
     function toggleCustomWaterInput() {
       const select = document.getElementById('waterSelect');
@@ -345,11 +361,11 @@
 
     function getNextWaterDate(lastWatered, interval) {
       const date = new Date(lastWatered);
+      if (isNaN(date.getTime())) return new Date();
       date.setDate(date.getDate() + parseInt(interval, 10));
       return date;
     }
 
-    // 植物リストの描画（レイアウト位置調整）
     function renderList() {
       const listEl = document.getElementById('plantList');
       listEl.innerHTML = '';
@@ -419,7 +435,6 @@
           badgeText = `${Math.abs(diffDays)} 日遅れ！`;
         }
 
-        // 写真エリアのHTML生成
         let photoAreaHtml = '';
         if (plant.image) {
           photoAreaHtml = `
@@ -441,7 +456,7 @@
         card.id = `plant-card-${encodeURIComponent(plant.name)}`;
         card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative transition-all";
         card.innerHTML = `
-          <!-- 1行目: 植物名（最大横幅）と次回予定日 -->
+          <!-- 1行目: 植物名（広々表示）と次回予定日 -->
           <div class="flex justify-between items-start gap-2 mb-2">
             <h3 class="font-bold text-slate-800 text-base truncate flex-1 min-w-0">${plant.name}</h3>
             <div class="text-right flex-shrink-0">
@@ -450,7 +465,7 @@
             </div>
           </div>
 
-          <!-- 2行目以降: タグ・水やり詳細 ＆ 写真枠（少し下に配置） -->
+          <!-- 2行目以降: タグ・詳細 ＆ 位置調整した写真枠 -->
           <div class="flex justify-between items-center gap-2 mb-2">
             <div class="flex-1 min-w-0">
               <span class="inline-block text-[10px] px-2 py-0.5 rounded-full ${badgeClass} mb-2">${badgeText}</span>
@@ -460,7 +475,6 @@
               </div>
             </div>
 
-            <!-- 少し下に下げて配置した写真枠 -->
             ${photoAreaHtml}
           </div>
 
@@ -470,14 +484,4 @@
               💧 今日水やりした
             </button>
             <button type="button" onclick="editPlant(${originalIndex})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1.5 rounded">編集</button>
-            <button type="button" onclick="deletePlant(${originalIndex})" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1.5 rounded">削除</button>
-          </div>
-        `;
-        listEl.appendChild(card);
-      });
-
-      // 本日集計
-      const total = normalSum + maxSoak;
-      document.getElementById('todayCount').innerText = `${todayPlantCount}株`;
-      document.getElementById('normalWater').innerText = parseFloat(normalSum.toFixed(2));
-      document.getElementById('maxSoak').innerText = parseFloat(max
+            <button type="button" onclick="deletePlant(${origina
