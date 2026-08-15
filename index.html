@@ -175,7 +175,7 @@
     let lastEditedName = null;
     let currentTargetPlantIndex = null;
 
-    // 本日の日付文字列(YYYY-MM-DD)を取得する堅牢な関数
+    // 本日の日付文字列(YYYY-MM-DD)を取得
     function getTodayString() {
       const now = new Date();
       const year = now.getFullYear();
@@ -212,7 +212,7 @@
       };
     }
 
-    // 画像圧縮処理（長辺300px・クオリティ0.6で超軽量化）
+    // 画像圧縮処理
     function compressImage(file, callback) {
       const reader = new FileReader();
       reader.onload = function(e) {
@@ -265,10 +265,12 @@
     }
 
     function removeFormImage() {
-      document.getElementById('imageData').value = '';
+      const imgDataEl = document.getElementById('imageData');
+      if (imgDataEl) imgDataEl.value = '';
       const preview = document.getElementById('formImagePreview');
-      preview.innerHTML = 'なし';
-      document.getElementById('removeImageBtn').classList.add('hidden');
+      if (preview) preview.innerHTML = 'なし';
+      const removeBtn = document.getElementById('removeImageBtn');
+      if (removeBtn) removeBtn.classList.add('hidden');
     }
 
     function triggerCardImageSelect(originalIndex) {
@@ -306,20 +308,19 @@
       }
     }
 
-    // ローカルストレージ保存（容量オーバー対策つき）
+    // ローカルストレージ保存
     function savePlantsToStorage() {
       try {
         localStorage.setItem('plants', JSON.stringify(plants));
       } catch (err) {
-        console.error("ストレージ保存失敗（容量制限などの可能性があります）:", err);
+        console.error("ストレージ保存失敗:", err);
         alert("端末の保存容量を超えたため画像なしで保存を試みます。");
-        // 最悪の場合画像をクリアしてテキストデータだけ守る
         try {
           const safePlants = plants.map(p => ({ ...p, image: null }));
           localStorage.setItem('plants', JSON.stringify(safePlants));
           plants = safePlants;
         } catch (e) {
-          alert("保存に失敗しました。データを整理してください。");
+          alert("保存に失敗しました。不要な植物を削除してください。");
         }
       }
       renderList();
@@ -368,6 +369,7 @@
 
     function renderList() {
       const listEl = document.getElementById('plantList');
+      if (!listEl) return;
       listEl.innerHTML = '';
 
       const sortMode = document.getElementById('sortMode').value;
@@ -456,7 +458,6 @@
         card.id = `plant-card-${encodeURIComponent(plant.name)}`;
         card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative transition-all";
         card.innerHTML = `
-          <!-- 1行目: 植物名（広々表示）と次回予定日 -->
           <div class="flex justify-between items-start gap-2 mb-2">
             <h3 class="font-bold text-slate-800 text-base truncate flex-1 min-w-0">${plant.name}</h3>
             <div class="text-right flex-shrink-0">
@@ -465,7 +466,6 @@
             </div>
           </div>
 
-          <!-- 2行目以降: タグ・詳細 ＆ 位置調整した写真枠 -->
           <div class="flex justify-between items-center gap-2 mb-2">
             <div class="flex-1 min-w-0">
               <span class="inline-block text-[10px] px-2 py-0.5 rounded-full ${badgeClass} mb-2">${badgeText}</span>
@@ -478,10 +478,9 @@
             ${photoAreaHtml}
           </div>
 
-          <!-- 3行目: 操作ボタン -->
           <div class="flex gap-2 pt-2 border-t border-slate-50 mt-1">
             <button type="button" onclick="waterNow(${originalIndex})" class="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold py-1.5 rounded transition">
               💧 今日水やりした
             </button>
             <button type="button" onclick="editPlant(${originalIndex})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1.5 rounded">編集</button>
-            <button type="button" onclick="deletePlant(${origina
+            <button type="button" onclick="deletePlant(${originalIndex})" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600
