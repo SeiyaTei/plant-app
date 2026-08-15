@@ -154,18 +154,46 @@
     let plants = JSON.parse(localStorage.getItem('plants')) || [];
     let lastEditedName = null;
 
-    // 既存データの ml -> L 自動変換＆互換処理
+    // 既存データの正規化・互換処理
+    function sanitizePlantItem(item) {
+      if (!item || typeof item !== 'object') return null;
+
+      const name = item.name || item.plantName || item.title || '無題の植物';
+      let interval = parseInt(item.interval || item.intervalDays || item.waterInterval || 7);
+      if (isNaN(interval) || interval <= 0) interval = 7;
+
+      let waterAmount = parseFloat(item.waterAmount || item.water || item.amount || 0.5);
+      if (isNaN(waterAmount)) waterAmount = 0.5;
+      // ml表記（10以上）の場合はLに変換
+      if (waterAmount >= 10) {
+        waterAmount = parseFloat((waterAmount / 1000).toFixed(2));
+      }
+
+      let lastWatered = item.lastWatered || item.lastWateredDate || item.date || getTodayString();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(lastWatered)) {
+        lastWatered = getTodayString();
+      }
+
+      return {
+        id: item.id || (Date.now() + Math.random()),
+        name: String(name),
+        interval: interval,
+        waterAmount: waterAmount,
+        lastWatered: String(lastWatered),
+        isSoak: Boolean(item.isSoak || item.soak || item.dobu)
+      };
+    }
+
     function migrateData() {
       let isMigrated = false;
-      plants.forEach(p => {
-        if (!p.id) p.id = Date.now() + Math.random();
-        
-        // 水量が10以上の場合は ml と判断して L に変換（例: 500 -> 0.5）
-        if (p.waterAmount && p.waterAmount >= 10) {
-          p.waterAmount = parseFloat((p.waterAmount / 1000).toFixed(2));
+      plants = plants.map(p => {
+        const cleaned = sanitizePlantItem(p);
+        if (JSON.stringify(p) !== JSON.stringify(cleaned)) {
           isMigrated = true;
         }
-      });
+        return cleaned;
+      }).filter(Boolean);
+
       if (isMigrated) {
         localStorage.setItem('plants', JSON.stringify(plants));
       }
@@ -484,33 +512,4 @@
       const blob = new Blob([jsonStr], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const downloadAnchor = document.createElement('a');
-      downloadAnchor.href = url;
-      downloadAnchor.download = `plant_data_${getTodayString()}.json`;
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      document.body.removeChild(downloadAnchor);
-      URL.revokeObjectURL(url);
-    }
-
-    // データ読み込み (Import)
-    function importData(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        try {
-          let imported = JSON.parse(event.target.result);
-          
-          // オブジェクトで包まれている形式({ plants: [...] })への対応
-          if (!Array.isArray(imported) && imported && typeof imported === 'object') {
-            if (Array.isArray(imported.plants)) {
-              imported = imported.plants;
-            } else if (Array.isArray(imported.data)) {
-              imported = imported.data;
-            }
-          }
-
-          if (Array.isArray(imported)) {
-            plants = imported;
-           
+    
