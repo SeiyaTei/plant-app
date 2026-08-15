@@ -17,8 +17,16 @@
 
   <link rel="manifest" href="manifest.json">
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html { scroll-behavior: smooth; }
+    @keyframes highlight {
+      0% { background-color: #d1fae5; }
+      100% { background-color: #ffffff; }
+    }
+    .card-highlight { animation: highlight 2.5s ease-out; }
+  </style>
 </head>
-<body class="bg-slate-100 text-slate-800 p-4 max-w-md mx-auto min-h-screen pb-24">
+<body class="bg-slate-100 text-slate-800 p-4 max-w-md mx-auto min-h-screen pb-24 relative">
 
   <h1 class="text-2xl font-bold mb-4 text-emerald-700 text-center">🌱 植物水やり管理</h1>
 
@@ -144,6 +152,11 @@
 
   <div id="plantList" class="space-y-3"></div>
 
+  <!-- 上に戻るボタン -->
+  <button id="scrollToTopBtn" type="button" class="fixed bottom-6 right-6 bg-emerald-600 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-xl font-bold opacity-0 pointer-events-none transition-all duration-300 z-50 hover:bg-emerald-700">
+    ↑
+  </button>
+
   <script>
     if ('serviceWorker' in navigator) {
       const swCode = `
@@ -253,7 +266,8 @@
         else if (diff < 0) { badgeClass = "bg-rose-100 text-rose-700 font-bold"; badgeText = `${Math.abs(diff)} 日遅れ！`; }
 
         const card = document.createElement('div');
-        card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100";
+        card.id = `plant-card-${plant.id}`;
+        card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 transition-all duration-300";
         card.innerHTML = `
           <div class="flex justify-between items-start mb-2">
             <h3 class="font-bold text-slate-800 text-base truncate">${plant.name}</h3>
@@ -320,7 +334,7 @@
       document.getElementById('submitBtn').innerText = "更新する";
       document.getElementById('cancelBtn').classList.remove('hidden');
 
-      // 編集フォームの場所までスムーズスクロール
+      // 編集フォームへスムーズスクロール
       document.getElementById('plantForm').scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -349,6 +363,22 @@
       loadPlants();
       resetForm();
 
+      // 一番上に戻るボタンの制御
+      const topBtn = document.getElementById('scrollToTopBtn');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 300) {
+          topBtn.classList.remove('opacity-0', 'pointer-events-none');
+          topBtn.classList.add('opacity-100', 'pointer-events-auto');
+        } else {
+          topBtn.classList.remove('opacity-100', 'pointer-events-auto');
+          topBtn.classList.add('opacity-0', 'pointer-events-none');
+        }
+      });
+
+      topBtn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+
       const imgInput = document.getElementById('formImageInput');
       imgInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
@@ -376,8 +406,10 @@
         if (!name) { alert("名前を入力してください"); return; }
 
         const idx = parseInt(document.getElementById('editIndex').value, 10);
+        const targetId = idx === -1 ? (Date.now() + Math.random()) : plants[idx].id;
+
         const data = {
-          id: idx === -1 ? (Date.now() + Math.random()) : plants[idx].id,
+          id: targetId,
           name: name,
           interval: parseInt(document.getElementById('interval').value, 10) || 7,
           waterAmount: parseFloat(document.getElementById('waterAmount').value) || 0.5,
@@ -391,7 +423,16 @@
 
         resetForm();
         savePlants();
-        alert("保存しました！");
+
+        // 保存後に更新・追加された植物の位置へ自動移動＆ハイライト表示
+        setTimeout(() => {
+          const cardEl = document.getElementById(`plant-card-${targetId}`);
+          if (cardEl) {
+            cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            cardEl.classList.add('card-highlight');
+            setTimeout(() => cardEl.classList.remove('card-highlight'), 2500);
+          }
+        }, 100);
       });
 
       document.getElementById('cancelBtn').addEventListener('click', resetForm);
