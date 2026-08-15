@@ -455,6 +455,9 @@
           }
         } catch (err) {
           alert("ファイルの読み込みに失敗しました。");
+        } finally {
+          // ★修正ポイント：ファイルを読み込んだ後にinputの値をクリアすることで、同じファイルを再度選べるようにする
+          e.target.value = '';
         }
       };
       reader.readAsText(file);
