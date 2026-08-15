@@ -16,7 +16,6 @@
 
   <h1 class="text-2xl font-bold mb-4 text-emerald-700 text-center">🌱 植物水やり管理</h1>
 
-  <!-- 本日の水やり状況 -->
   <div class="bg-white p-4 rounded-xl shadow-md mb-3 border-l-4 border-emerald-500">
     <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
       本日必要な合計水量 (<span id="todayCount">0</span>株)
@@ -35,7 +34,6 @@
     </button>
   </div>
 
-  <!-- 明日の準備状況 -->
   <div class="bg-white p-4 rounded-xl shadow-md mb-6 border-l-4 border-blue-500">
     <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
       明日必要な合計水量 (<span id="tomorrowCount">0</span>株)
@@ -51,7 +49,6 @@
     </div>
   </div>
 
-  <!-- データバックアップ / ロード機能 -->
   <div class="flex gap-2 mb-6">
     <button onclick="exportData()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-2 px-3 rounded-lg font-bold transition">📤 エクスポート</button>
     <label class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-2 px-3 rounded-lg font-bold transition text-center cursor-pointer">
@@ -60,7 +57,6 @@
     </label>
   </div>
 
-  <!-- 登録・編集フォーム -->
   <form id="plantForm" onsubmit="savePlant(event)" class="bg-white p-4 rounded-xl shadow-md mb-6">
     <h2 id="formTitle" class="text-sm font-bold mb-3 text-slate-700">新しい植物を追加</h2>
     <input type="hidden" id="editIndex" value="-1">
@@ -191,7 +187,6 @@
           if (plant.isSoak) tomorrowMaxSoak = Math.max(tomorrowMaxSoak, amount); else tomorrowNormal += amount;
         }
 
-        // ラベルのロジック
         let badgeClass = "bg-slate-100 text-slate-600";
         let badgeText = `あと${diffDays}日`;
         if (diffDays <= 0) {
@@ -277,7 +272,16 @@
     function deletePlant(index) { if (confirm("削除しますか？")) { plants.splice(index, 1); savePlantsToStorage(); } }
     function resetForm() { document.getElementById('plantForm').reset(); document.getElementById('editIndex').value = "-1"; document.getElementById('lastWatered').value = getTodayString(); setSelectedWaterAmount(0.5); document.getElementById('formTitle').innerText = "新しい植物を追加"; document.getElementById('submitBtn').innerText = "登録する"; document.getElementById('cancelBtn').classList.add('hidden'); }
     function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
-    window.addEventListener('scroll', () => { const btn = document.getElementById('scrollToTopBtn'); if (window.scrollY > 300) btn.classList.replace('opacity-0', 'opacity-100'); else btn.classList.replace('opacity-100', 'opacity-0'); });
+    window.addEventListener('scroll', () => { 
+        const btn = document.getElementById('scrollToTopBtn'); 
+        if (window.scrollY > 300) {
+            btn.classList.remove('opacity-0', 'pointer-events-none');
+            btn.classList.add('opacity-100');
+        } else {
+            btn.classList.add('opacity-0', 'pointer-events-none');
+            btn.classList.remove('opacity-100');
+        }
+    });
     function exportData() { const d = document.createElement('a'); d.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(plants)); d.download = "plants.json"; d.click(); }
     function importData(e) { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = (e) => { plants = JSON.parse(e.target.result); migrateData(); savePlantsToStorage(); }; r.readAsText(f); }
     renderList();
