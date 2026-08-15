@@ -154,8 +154,17 @@
     let plants = JSON.parse(localStorage.getItem('plants')) || [];
     let lastEditedName = null;
 
-    // 既存データの正規化・互換処理
-    function sanitizePlantItem(item) {
+    // 本日の日付を YYYY-MM-DD 形式で取得
+    function getTodayString() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    // 単一項目の整形・正規化
+    function normalizePlant(item) {
       if (!item || typeof item !== 'object') return null;
 
       const name = item.name || item.plantName || item.title || '無題の植物';
@@ -164,15 +173,9 @@
 
       let waterAmount = parseFloat(item.waterAmount || item.water || item.amount || 0.5);
       if (isNaN(waterAmount)) waterAmount = 0.5;
-      // ml表記（10以上）の場合はLに変換
-      if (waterAmount >= 10) {
-        waterAmount = parseFloat((waterAmount / 1000).toFixed(2));
-      }
+      if (waterAmount >= 10) waterAmount = parseFloat((waterAmount / 1000).toFixed(2)); // ml -> L 変換
 
       let lastWatered = item.lastWatered || item.lastWateredDate || item.date || getTodayString();
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(lastWatered)) {
-        lastWatered = getTodayString();
-      }
 
       return {
         id: item.id || (Date.now() + Math.random()),
@@ -184,28 +187,14 @@
       };
     }
 
+    // 既存データの互換チェック＆自動復元
     function migrateData() {
-      let isMigrated = false;
-      plants = plants.map(p => {
-        const cleaned = sanitizePlantItem(p);
-        if (JSON.stringify(p) !== JSON.stringify(cleaned)) {
-          isMigrated = true;
-        }
-        return cleaned;
-      }).filter(Boolean);
-
-      if (isMigrated) {
-        localStorage.setItem('plants', JSON.stringify(plants));
+      if (!Array.isArray(plants)) {
+        plants = [];
+        return;
       }
-    }
-
-    // 本日の日付を YYYY-MM-DD 形式で取得
-    function getTodayString() {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
+      plants = plants.map(normalizePlant).filter(Boolean);
+      localStorage.setItem('plants', JSON.stringify(plants));
     }
 
     // 初期化
@@ -428,18 +417,20 @@
       }
     }
 
-    // フォーム送信
+    // フォーム送信（新規追加 / 編集保存）
     function savePlant(e) {
       e.preventDefault();
       const index = parseInt(document.getElementById('editIndex').value);
-      const name = document.getElementById('name').value;
+      const name = document.getElementById('name').value.trim();
+
+      if (!name) return;
       
       const data = {
-        id: index === -1 ? Date.now() : plants[index].id,
+        id: index === -1 ? (Date.now() + Math.random()) : plants[index].id,
         name: name,
-        interval: parseInt(document.getElementById('interval').value),
+        interval: parseInt(document.getElementById('interval').value) || 7,
         waterAmount: getSelectedWaterAmount(),
-        lastWatered: document.getElementById('lastWatered').value,
+        lastWatered: document.getElementById('lastWatered').value || getTodayString(),
         isSoak: document.getElementById('isSoak').checked
       };
 
@@ -512,4 +503,8 @@
       const blob = new Blob([jsonStr], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const downloadAnchor = document.createElement('a');
-    
+      downloadAnchor.href = url;
+      downloadAnchor.download = `plant_data_${getTodayString()}.json`;
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+ 
