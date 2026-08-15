@@ -23,22 +23,45 @@
 
   <h1 class="text-2xl font-bold mb-4 text-emerald-700 text-center">🌱 植物水やり管理</h1>
 
-  <!-- 水量計算結果表示エリア -->
+  <!-- 本日必要な水量・株数エリア -->
   <div class="bg-white p-4 rounded-xl shadow-md mb-3 border-l-4 border-emerald-500">
-    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">本日必要な合計水量</h2>
+    <div class="flex justify-between items-center mb-1">
+      <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">🌱 本日必要な水やり</h2>
+      <span id="todayCount" class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full">0株</span>
+    </div>
+    
     <div class="flex justify-between items-baseline mb-2">
       <div>
         <span id="totalWater" class="text-3xl font-black text-emerald-600">0</span>
         <span class="text-sm font-semibold text-slate-600"> L</span>
       </div>
-      <div id="soakInfo" class="text-xs text-slate-500 text-right">
-        通常: <span id="normalWater">0</span>L / どぶ漬け最大: <span id="maxSoak">0</span>L
+      <div class="text-xs text-slate-400 text-right">
+        通常: <span id="normalWater">0</span>L / 漬け最大: <span id="maxSoak">0</span>L
       </div>
     </div>
+
     <!-- 本日の水やり一括完了ボタン -->
-    <button onclick="waterAllToday()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-lg shadow-sm transition flex items-center justify-center gap-1">
+    <button onclick="waterAllToday()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-lg shadow-sm transition flex items-center justify-center gap-1 mt-1">
       ✨ 本日の水やりをすべて完了する
     </button>
+  </div>
+
+  <!-- 明日必要な水量・株数エリア (独立カード) -->
+  <div class="bg-white p-4 rounded-xl shadow-md mb-3 border-l-4 border-blue-500">
+    <div class="flex justify-between items-center mb-1">
+      <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">📅 明日必要な水やり (事前準備)</h2>
+      <span id="tomorrowCount" class="text-xs font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full">0株</span>
+    </div>
+    
+    <div class="flex justify-between items-baseline">
+      <div>
+        <span id="tomorrowTotalWater" class="text-3xl font-black text-blue-600">0</span>
+        <span class="text-sm font-semibold text-slate-600"> L</span>
+      </div>
+      <div class="text-xs text-slate-400 text-right">
+        通常: <span id="tomorrowNormalWater">0</span>L / 漬け最大: <span id="tomorrowMaxSoak">0</span>L
+      </div>
+    </div>
   </div>
 
   <!-- データバックアップ / ロード機能 -->
@@ -235,8 +258,16 @@
         displayPlants.sort((a, b) => a.id - b.id);
       }
 
+      // 本日用変数の初期化
       let normalSum = 0;
       let maxSoak = 0;
+      let todayPlantCount = 0;
+
+      // 明日用変数の初期化
+      let tomorrowNormalSum = 0;
+      let tomorrowMaxSoak = 0;
+      let tomorrowPlantCount = 0;
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -248,12 +279,23 @@
         const diffDays = Math.ceil((nextDate - today) / (1000 * 60 * 60 * 24));
         const amount = parseFloat(plant.waterAmount) || 0;
 
-        // 本日水やりが必要な場合の計算 (L単位)
+        // 本日必要な場合（今日以前＝予定日当日または遅れているもの）
         if (diffDays <= 0) {
+          todayPlantCount++;
           if (plant.isSoak) {
             if (amount > maxSoak) maxSoak = amount;
           } else {
             normalSum += amount;
+          }
+        }
+
+        // 明日必要な場合（明日が予定日のもの）
+        if (diffDays === 1) {
+          tomorrowPlantCount++;
+          if (plant.isSoak) {
+            if (amount > tomorrowMaxSoak) tomorrowMaxSoak = amount;
+          } else {
+            tomorrowNormalSum += amount;
           }
         }
 
@@ -262,6 +304,9 @@
         if (diffDays === 0) {
           badgeClass = "bg-amber-100 text-amber-700 font-bold border border-amber-300";
           badgeText = "今日が予定日！";
+        } else if (diffDays === 1) {
+          badgeClass = "bg-blue-100 text-blue-700 font-bold border border-blue-300";
+          badgeText = "明日が予定日";
         } else if (diffDays < 0) {
           badgeClass = "bg-rose-100 text-rose-700 font-bold border border-rose-300";
           badgeText = `${Math.abs(diffDays)} 日遅れ！`;
@@ -298,11 +343,19 @@
         listEl.appendChild(card);
       });
 
-      // 合計水量の表示更新 (小数点第2位まで綺麗に表示)
+      // 本日の表示更新
       const total = normalSum + maxSoak;
+      document.getElementById('todayCount').innerText = `${todayPlantCount}株`;
       document.getElementById('normalWater').innerText = parseFloat(normalSum.toFixed(2));
       document.getElementById('maxSoak').innerText = parseFloat(maxSoak.toFixed(2));
       document.getElementById('totalWater').innerText = parseFloat(total.toFixed(2));
+
+      // 明日の表示更新
+      const tomorrowTotal = tomorrowNormalSum + tomorrowMaxSoak;
+      document.getElementById('tomorrowCount').innerText = `${tomorrowPlantCount}株`;
+      document.getElementById('tomorrowNormalWater').innerText = parseFloat(tomorrowNormalSum.toFixed(2));
+      document.getElementById('tomorrowMaxSoak').innerText = parseFloat(tomorrowMaxSoak.toFixed(2));
+      document.getElementById('tomorrowTotalWater').innerText = parseFloat(tomorrowTotal.toFixed(2));
 
       // 編集後スクロール＆強調
       if (lastEditedName) {
@@ -425,7 +478,7 @@
       }
     });
 
-    // データ出力 (Export) - Blob方式に修正
+    // データ出力 (Export) - Blob方式
     function exportData() {
       const jsonStr = JSON.stringify(plants, null, 2);
       const blob = new Blob([jsonStr], { type: "application/json" });
@@ -460,29 +513,4 @@
 
           if (Array.isArray(imported)) {
             plants = imported;
-            migrateData(); // インポートデータも ml -> L 自動変換
-            savePlantsToStorage();
-            alert(`データの読み込みが完了しました！（${plants.length}件）`);
-          } else {
-            alert("読み込んだデータの中に植物のリストが見つかりませんでした。データ形式をご確認ください。");
-          }
-        } catch (err) {
-          alert("JSONファイルの解析に失敗しました:\n" + err.message);
-        } finally {
-          e.target.value = '';
-        }
-      };
-      
-      reader.onerror = function() {
-        alert("ファイルの読み込み中にエラーが発生しました。");
-        e.target.value = '';
-      };
-
-      reader.readAsText(file, 'UTF-8');
-    }
-
-    // 初回描画
-    renderList();
-  </script>
-</body>
-</html>
+           
