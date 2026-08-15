@@ -48,7 +48,7 @@
     </button>
     <label class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-2 px-3 rounded-lg font-bold transition text-center cursor-pointer">
       📥 インポート (ロード)
-      <input type="file" id="importFile" accept=".json" onchange="importData(event)" class="hidden">
+      <input type="file" id="importFile" accept=".json,application/json" onchange="importData(event)" class="hidden">
     </label>
   </div>
 
@@ -436,7 +436,7 @@
       downloadAnchor.remove();
     }
 
-    // データ読み込み (Import)
+    // データ読み込み (Import) - 強化版
     function importData(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -444,23 +444,38 @@
       const reader = new FileReader();
       reader.onload = function(event) {
         try {
-          const imported = JSON.parse(event.target.result);
+          let imported = JSON.parse(event.target.result);
+          
+          // オブジェクトで包まれている形式({ plants: [...] })への対応
+          if (!Array.isArray(imported) && imported && typeof imported === 'object') {
+            if (Array.isArray(imported.plants)) {
+              imported = imported.plants;
+            } else if (Array.isArray(imported.data)) {
+              imported = imported.data;
+            }
+          }
+
           if (Array.isArray(imported)) {
             plants = imported;
             migrateData(); // インポートデータも ml -> L 自動変換
             savePlantsToStorage();
-            alert("データの読み込みが完了しました！");
+            alert(`データの読み込みが完了しました！（${plants.length}件）`);
           } else {
-            alert("正しいセーブデータ形式ではありません。");
+            alert("読み込んだデータの中に植物のリストが見つかりませんでした。データ形式をご確認ください。");
           }
         } catch (err) {
-          alert("ファイルの読み込みに失敗しました。");
+          alert("JSONファイルの解析に失敗しました:\n" + err.message);
         } finally {
-          // ★修正ポイント：ファイルを読み込んだ後にinputの値をクリアすることで、同じファイルを再度選べるようにする
           e.target.value = '';
         }
       };
-      reader.readAsText(file);
+      
+      reader.onerror = function() {
+        alert("ファイルの読み込み中にエラーが発生しました。");
+        e.target.value = '';
+      };
+
+      reader.readAsText(file, 'UTF-8');
     }
 
     // 初回描画
