@@ -79,7 +79,7 @@
   </div>
 
   <!-- 登録・編集フォーム -->
-  <form id="plantForm" onsubmit="return false;" class="bg-white p-4 rounded-xl shadow-md mb-6 border border-slate-200">
+  <form id="plantForm" class="bg-white p-4 rounded-xl shadow-md mb-6 border border-slate-200">
     <h2 id="formTitle" class="text-sm font-bold mb-3 text-slate-700">新しい植物を追加 / 編集</h2>
     <input type="hidden" id="editIndex" value="-1">
     <input type="hidden" id="imageData" value="">
@@ -128,7 +128,7 @@
     </div>
 
     <div class="flex gap-2">
-      <button type="button" id="submitBtn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-sm transition">
+      <button type="submit" id="submitBtn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-sm transition">
         登録する
       </button>
       <button type="button" id="cancelBtn" class="hidden bg-slate-300 text-slate-700 font-bold py-2 px-3 rounded-lg text-sm">
@@ -401,10 +401,11 @@
         document.getElementById('formImageInput').value = '';
       });
 
-      document.getElementById('submitBtn').addEventListener('click', (e) => {
+      // フォーム送信処理（登録・更新）
+      document.getElementById('plantForm').addEventListener('submit', (e) => {
         e.preventDefault();
         const name = document.getElementById('name').value.trim();
-        if (!name) { alert("名前を入力してください"); return; }
+        if (!name) return;
 
         const idx = parseInt(document.getElementById('editIndex').value, 10);
         const targetId = idx === -1 ? (Date.now() + Math.random()) : plants[idx].id;
@@ -440,4 +441,4 @@
 
       document.getElementById('waterAllBtn').addEventListener('click', () => {
         const todayStr = getTodayString();
-        p
+        plants.forEach(p => p.last
