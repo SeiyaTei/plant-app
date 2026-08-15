@@ -182,7 +182,6 @@
     }
 
     let plants = [];
-    let lastEditedName = null;
 
     function getTodayString() {
       const now = new Date();
@@ -328,7 +327,19 @@
       document.getElementById('lastWatered').value = p.lastWatered;
       document.getElementById('isSoak').checked = p.isSoak;
       document.getElementById('editIndex').value = idx;
+      
+      const preview = document.getElementById('formImagePreview');
+      const removeBtn = document.getElementById('removeImageBtn');
       document.getElementById('imageData').value = p.image || '';
+      
+      if(p.image) {
+        preview.innerHTML = `<img src="${p.image}" class="w-full h-full object-cover">`;
+        removeBtn.classList.remove('hidden');
+      } else {
+        preview.innerHTML = 'なし';
+        removeBtn.classList.add('hidden');
+      }
+
       document.getElementById('submitBtn').innerText = "更新する";
       document.getElementById('cancelBtn').classList.remove('hidden');
     }
@@ -347,14 +358,36 @@
       document.getElementById('lastWatered').value = getTodayString();
       document.getElementById('isSoak').checked = false;
       document.getElementById('imageData').value = '';
+      document.getElementById('formImagePreview').innerHTML = 'なし';
+      document.getElementById('removeImageBtn').classList.add('hidden');
       document.getElementById('submitBtn').innerText = "登録する";
       document.getElementById('cancelBtn').classList.add('hidden');
     }
 
-    // イベントリスナー設定
     document.addEventListener('DOMContentLoaded', () => {
       loadPlants();
       resetForm();
+
+      const imgInput = document.getElementById('formImageInput');
+      imgInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const dataUrl = event.target.result;
+          document.getElementById('imageData').value = dataUrl;
+          document.getElementById('formImagePreview').innerHTML = `<img src="${dataUrl}" class="w-full h-full object-cover">`;
+          document.getElementById('removeImageBtn').classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+      });
+
+      document.getElementById('removeImageBtn').addEventListener('click', () => {
+        document.getElementById('imageData').value = '';
+        document.getElementById('formImagePreview').innerHTML = 'なし';
+        document.getElementById('removeImageBtn').classList.add('hidden');
+        document.getElementById('formImageInput').value = '';
+      });
 
       document.getElementById('submitBtn').addEventListener('click', (e) => {
         e.preventDefault();
