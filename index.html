@@ -4,6 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>植物水やり管理アプリ</title>
+
+  <!-- PWA・ホーム画面インストール用の設定 -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="水やり管理">
+  <meta name="theme-color" content="#047857">
+
+  <!-- SVGアイコン（ホーム画面・タブ用） -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+
+  <!-- Web App Manifest (インラインデータ化) -->
+  <link rel="manifest" href='data:application/manifest+json,{"name":"植物水やり管理","short_name":"水やり管理","start_url":".","display":"standalone","background_color":"#f1f5f9","theme_color":"#047857","icons":[{"src":"data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>","sizes":"512x512","type":"image/svg+xml","purpose":"any maskable"}]}'>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     html { scroll-behavior: smooth; }
@@ -55,7 +70,7 @@
     </div>
   </div>
 
-  <!-- データバックアップ / ロード機能 (直接ブラウザ標準のクリックで動く構造) -->
+  <!-- データバックアップ / ロード機能 -->
   <div class="flex gap-2 mb-6">
     <button type="button" onclick="exportData()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-2.5 px-3 rounded-lg font-bold transition">
       📤 エクスポート (保存)
@@ -450,241 +465,4 @@
             <div class="flex-1 min-w-0">
               <span class="inline-block text-[10px] px-2 py-0.5 rounded-full ${badgeClass} mb-2">${badgeText}</span>
               <div class="text-xs text-slate-500 space-y-0.5">
-                <div>間隔: <span class="font-semibold text-slate-700">${plant.interval}日</span> / 水量: <span class="font-semibold text-slate-700">${amount} L</span> ${plant.isSoak ? '<span class="text-amber-600 font-bold">(どぶ漬け)</span>' : ''}</div>
-                <div>前回水やり: ${plant.lastWatered}</div>
-              </div>
-            </div>
-            ${photoAreaHtml}
-          </div>
-
-          <div class="flex gap-2 pt-2 border-t border-slate-50 mt-1">
-            <button type="button" onclick="waterNow(${originalIndex})" class="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold py-1.5 rounded transition">
-              💧 今日水やりした
-            </button>
-            <button type="button" onclick="editPlant(${originalIndex})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1.5 rounded">編集</button>
-            <button type="button" onclick="deletePlant(${originalIndex})" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1.5 rounded">削除</button>
-          </div>
-        `;
-        listEl.appendChild(card);
-      });
-
-      document.getElementById('todayCount').innerText = `${todayPlantCount}株`;
-      document.getElementById('normalWater').innerText = parseFloat(normalSum.toFixed(2));
-      document.getElementById('maxSoak').innerText = parseFloat(maxSoak.toFixed(2));
-      document.getElementById('totalWater').innerText = parseFloat((normalSum + maxSoak).toFixed(2));
-
-      document.getElementById('tomorrowCount').innerText = `${tomorrowPlantCount}株`;
-      document.getElementById('tomorrowNormalWater').innerText = parseFloat(tomorrowNormalSum.toFixed(2));
-      document.getElementById('tomorrowMaxSoak').innerText = parseFloat(tomorrowMaxSoak.toFixed(2));
-      document.getElementById('tomorrowTotalWater').innerText = parseFloat((tomorrowNormalSum + tomorrowMaxSoak).toFixed(2));
-
-      if (window.lastEditedName) {
-        setTimeout(() => {
-          const targetCard = document.getElementById(`plant-card-${encodeURIComponent(window.lastEditedName)}`);
-          if (targetCard) {
-            targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            targetCard.classList.add('card-highlight');
-          }
-          window.lastEditedName = null;
-        }, 100);
-      }
-    };
-
-    window.waterNow = function(index) {
-      if (window.plants[index]) {
-        window.plants[index].lastWatered = window.getTodayString();
-        window.lastEditedName = window.plants[index].name;
-        window.savePlantsToStorage();
-      }
-    };
-
-    window.waterAllToday = function() {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      let count = 0;
-
-      window.plants.forEach(plant => {
-        const nextDate = window.getNextWaterDate(plant.lastWatered, plant.interval);
-        nextDate.setHours(0, 0, 0, 0);
-        if (nextDate <= today) {
-          plant.lastWatered = window.getTodayString();
-          count++;
-        }
-      });
-
-      if (count > 0) {
-        window.savePlantsToStorage();
-        alert(`${count}件の植物の水やりを完了しました！`);
-      } else {
-        alert("本日水やりが必要な植物はありません。");
-      }
-    };
-
-    // ★植物の登録処理（エラーハンドリング・ログ出力付き）★
-    window.savePlant = function() {
-      try {
-        const nameInput = document.getElementById('name');
-        const name = nameInput ? nameInput.value.trim() : '';
-
-        if (!name) {
-          alert("植物の名前を入力してください。");
-          if (nameInput) nameInput.focus();
-          return;
-        }
-
-        const editIdxEl = document.getElementById('editIndex');
-        const index = editIdxEl ? parseInt(editIdxEl.value, 10) : -1;
-        
-        const intervalEl = document.getElementById('interval');
-        const intervalVal = intervalEl ? (parseInt(intervalEl.value, 10) || 7) : 7;
-        
-        const lastWateredEl = document.getElementById('lastWatered');
-        let lastWateredVal = lastWateredEl ? lastWateredEl.value : '';
-        if (!lastWateredVal) lastWateredVal = window.getTodayString();
-
-        const waterAmountVal = window.getSelectedWaterAmount();
-        
-        const isSoakEl = document.getElementById('isSoak');
-        const isSoakVal = isSoakEl ? isSoakEl.checked : false;
-
-        const imgDataEl = document.getElementById('imageData');
-        const imageVal = imgDataEl ? (imgDataEl.value || null) : null;
-
-        const newPlantData = {
-          id: index === -1 ? (Date.now() + Math.random()) : window.plants[index].id,
-          name: name,
-          interval: intervalVal,
-          waterAmount: waterAmountVal,
-          lastWatered: lastWateredVal,
-          isSoak: isSoakVal,
-          image: imageVal
-        };
-
-        if (index === -1) {
-          window.plants.push(newPlantData);
-        } else {
-          window.plants[index] = newPlantData;
-        }
-
-        window.lastEditedName = name;
-        window.resetForm();
-        window.savePlantsToStorage();
-        alert(`「${name}」を登録しました！`);
-      } catch (err) {
-        alert("登録時にエラーが発生しました: " + err.message);
-      }
-    };
-
-    window.editPlant = function(index) {
-      const p = window.plants[index];
-      if (!p) return;
-
-      document.getElementById('name').value = p.name;
-      document.getElementById('interval').value = p.interval;
-      window.setSelectedWaterAmount(p.waterAmount);
-      document.getElementById('lastWatered').value = p.lastWatered || window.getTodayString();
-      document.getElementById('isSoak').checked = p.isSoak;
-      document.getElementById('editIndex').value = index;
-
-      document.getElementById('imageData').value = p.image || '';
-      const preview = document.getElementById('formImagePreview');
-      if (p.image) {
-        preview.innerHTML = `<img src="${p.image}" class="w-full h-full object-cover">`;
-        document.getElementById('removeImageBtn').classList.remove('hidden');
-      } else {
-        preview.innerHTML = 'なし';
-        document.getElementById('removeImageBtn').classList.add('hidden');
-      }
-
-      document.getElementById('formTitle').innerText = "植物の編集";
-      document.getElementById('submitBtn').innerText = "更新する";
-      document.getElementById('cancelBtn').classList.remove('hidden');
-      document.getElementById('name').focus();
-    };
-
-    window.deletePlant = function(index) {
-      if (window.plants[index] && confirm(`${window.plants[index].name} を削除してもよろしいですか？`)) {
-        window.plants.splice(index, 1);
-        window.savePlantsToStorage();
-      }
-    };
-
-    window.resetForm = function() {
-      document.getElementById('name').value = '';
-      document.getElementById('interval').value = '7';
-      document.getElementById('editIndex').value = "-1";
-      document.getElementById('lastWatered').value = window.getTodayString();
-      document.getElementById('isSoak').checked = false;
-      window.setSelectedWaterAmount(0.5);
-      window.removeFormImage();
-      
-      document.getElementById('formTitle').innerText = "新しい植物を追加";
-      document.getElementById('submitBtn').innerText = "登録する";
-      document.getElementById('cancelBtn').classList.add('hidden');
-    };
-
-    window.exportData = function() {
-      try {
-        const jsonStr = JSON.stringify(window.plants, null, 2);
-        const blob = new Blob([jsonStr], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `plant_data_${window.getTodayString()}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } catch (err) {
-        alert("エクスポートエラー: " + err.message);
-      }
-    };
-
-    // ★インポート実行処理★
-    window.importData = function(inputEl) {
-      const file = inputEl.files && inputEl.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        try {
-          const content = evt.target.result;
-          let raw = JSON.parse(content);
-          let targetArray = null;
-
-          if (Array.isArray(raw)) {
-            targetArray = raw;
-          } else if (raw && typeof raw === 'object') {
-            const possibleKeys = ['plants', 'data', 'items', 'list', 'plantList'];
-            for (let key of possibleKeys) {
-              if (Array.isArray(raw[key])) {
-                targetArray = raw[key];
-                break;
-              }
-            }
-          }
-
-          if (targetArray) {
-            window.plants = targetArray.map(window.normalizePlant).filter(Boolean);
-            window.savePlantsToStorage();
-            alert(`インポートが完了しました！（${window.plants.length}件）`);
-          } else {
-            alert("有効な植物データが見つかりませんでした。");
-          }
-        } catch (err) {
-          alert("ファイル読み込み失敗: " + err.message);
-        } finally {
-          inputEl.value = '';
-        }
-      };
-
-      reader.readAsText(file, 'UTF-8');
-    };
-
-    document.addEventListener('DOMContentLoaded', () => {
-      window.loadPlantsFromStorage();
-      window.resetForm();
-    });
-  </script>
-</body>
-</html>
+             
