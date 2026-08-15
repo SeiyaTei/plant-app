@@ -53,7 +53,7 @@
     <button onclick="exportData()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-2 px-3 rounded-lg font-bold transition">📤 エクスポート</button>
     <label class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-2 px-3 rounded-lg font-bold transition text-center cursor-pointer">
       📥 インポート
-      <input type="file" id="importFile" accept=".json" onchange="importData(event)" class="hidden">
+      <input type="file" id="importFile" onchange="importData(event)" class="hidden">
     </label>
   </div>
 
@@ -283,7 +283,22 @@
         }
     });
     function exportData() { const d = document.createElement('a'); d.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(plants)); d.download = "plants.json"; d.click(); }
-    function importData(e) { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = (e) => { plants = JSON.parse(e.target.result); migrateData(); savePlantsToStorage(); }; r.readAsText(f); }
+    function importData(e) { 
+        const f = e.target.files[0]; 
+        if (!f) return; 
+        const r = new FileReader(); 
+        r.onload = (e) => { 
+            try {
+                plants = JSON.parse(e.target.result); 
+                migrateData(); 
+                savePlantsToStorage(); 
+                alert("インポートが完了しました");
+            } catch (err) {
+                alert("ファイルの読み込みに失敗しました。正しいJSONファイルを選択してください。");
+            }
+        }; 
+        r.readAsText(f); 
+    }
     renderList();
   </script>
 </body>
