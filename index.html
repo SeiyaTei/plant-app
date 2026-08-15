@@ -45,19 +45,18 @@
     <h2 id="formTitle" class="text-sm font-bold mb-3 text-slate-700">新しい植物を追加</h2>
     <input type="hidden" id="editIndex" value="-1">
     
-    <!-- 写真エリア -->
-    <div class="mb-4 text-center">
-      <div id="imagePreviewContainer" class="w-20 h-20 mx-auto mb-2 bg-slate-100 rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center relative cursor-pointer" onclick="document.getElementById('imageInput').click()">
-        <img id="imagePreview" class="w-full h-full object-cover hidden">
-        <span id="noImageText" class="text-slate-400 text-[10px]">写真</span>
-      </div>
-      <input type="file" id="imageInput" accept="image/*" onchange="handleImageUpload(event)" class="hidden">
-      <input type="hidden" id="plantImage">
-    </div>
-    
-    <div class="mb-3">
-      <label class="block text-xs font-semibold text-slate-500 mb-1">植物の名前</label>
-      <input type="text" id="name" required class="w-full border rounded-lg p-2 text-sm focus:outline-emerald-500">
+    <!-- 写真と名前 -->
+    <div class="flex gap-4 mb-3">
+       <div id="imagePreviewContainer" class="w-20 h-20 bg-slate-100 rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center relative cursor-pointer flex-shrink-0" onclick="document.getElementById('imageInput').click()">
+         <img id="imagePreview" class="w-full h-full object-cover hidden">
+         <span id="noImageText" class="text-slate-400 text-[10px]">写真</span>
+       </div>
+       <input type="file" id="imageInput" accept="image/*" onchange="handleImageUpload(event)" class="hidden">
+       <input type="hidden" id="plantImage">
+       <div class="flex-1">
+         <label class="block text-xs font-semibold text-slate-500 mb-1">植物の名前</label>
+         <input type="text" id="name" required class="w-full border rounded-lg p-2 text-sm focus:outline-emerald-500">
+       </div>
     </div>
 
     <div class="grid grid-cols-2 gap-2 mb-3">
@@ -66,7 +65,7 @@
         <input type="number" id="interval" value="7" required min="1" class="w-full border rounded-lg p-2 text-sm focus:outline-emerald-500">
       </div>
       <div>
-        <label class="block text-xs font-semibold text-slate-500 mb-1">1回の水量 (L)</label>
+        <label class="block text-xs font-semibold text-slate-500 mb-1">水量 (L)</label>
         <select id="waterSelect" onchange="toggleCustomWaterInput()" class="w-full border rounded-lg p-2 text-sm focus:outline-emerald-500 bg-white mb-1">
           <option value="0.5">0.5 L</option><option value="1">1.0 L</option><option value="1.5">1.5 L</option>
           <option value="2">2.0 L</option><option value="2.5">2.5 L</option><option value="3">3.0 L</option>
@@ -79,7 +78,7 @@
 
     <div class="mb-3">
       <label class="block text-xs font-semibold text-slate-500 mb-1">メモ</label>
-      <textarea id="memo" rows="2" placeholder="肥料や植え替え記録など" class="w-full border rounded-lg p-2 text-sm focus:outline-emerald-500"></textarea>
+      <textarea id="memo" rows="2" placeholder="肥料や植え替え記録など..." class="w-full border rounded-lg p-2 text-sm focus:outline-emerald-500"></textarea>
     </div>
 
     <div class="mb-3">
@@ -113,7 +112,6 @@
     let plants = JSON.parse(localStorage.getItem('plants')) || [];
     let lastEditedName = null;
 
-    // データ移行と初期化
     function migrateData() {
       plants.forEach(p => {
         if (!p.id) p.id = Date.now() + Math.random();
@@ -184,24 +182,29 @@
         }
 
         let badgeClass = "bg-slate-100 text-slate-600", badgeText = `あと ${diffDays} 日`;
-        if (diffDays === 0) { badgeClass = "bg-amber-100 text-amber-700 font-bold"; badgeText = "今日が予定日！"; }
-        else if (diffDays < 0) { badgeClass = "bg-rose-100 text-rose-700 font-bold"; badgeText = `${Math.abs(diffDays)} 日遅れ！`; }
+        if (diffDays === 0) { badgeClass = "bg-amber-100 text-amber-700 font-bold border border-amber-300"; badgeText = "今日が予定日！"; }
+        else if (diffDays < 0) { badgeClass = "bg-rose-100 text-rose-700 font-bold border border-rose-300"; badgeText = `${Math.abs(diffDays)} 日遅れ！`; }
 
+        const originalIndex = plants.findIndex(p => p.id === plant.id);
         const card = document.createElement('div');
         card.id = `plant-card-${plant.id}`;
-        card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex gap-4 items-center";
+        card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative transition-all";
         card.innerHTML = `
-          <div class="w-16 h-16 bg-slate-100 rounded-lg overflow-hidden shrink-0">
-             ${plant.image ? `<img src="${plant.image}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-slate-300 text-[10px]">No img</div>`}
+          <div class="flex gap-3 mb-2">
+            <div class="w-16 h-16 bg-slate-100 rounded-lg overflow-hidden shrink-0">
+               ${plant.image ? `<img src="${plant.image}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-slate-300 text-[10px]">No img</div>`}
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="font-bold text-slate-800 text-base">${plant.name}</h3>
+              <span class="inline-block text-[10px] px-2 py-0.5 rounded-full ${badgeClass} mt-1">${badgeText}</span>
+              <div class="text-[11px] text-slate-400 mt-1 truncate">${plant.memo || 'メモなし'}</div>
+            </div>
           </div>
-          <div class="flex-1 min-w-0">
-            <h3 class="font-bold text-slate-800 text-sm truncate">${plant.name}</h3>
-            <span class="inline-block text-[10px] px-2 py-0.5 rounded-full ${badgeClass} mt-1">${badgeText}</span>
-            <div class="text-[11px] text-slate-400 mt-1 truncate">${plant.memo || 'メモなし'}</div>
-          </div>
-          <div class="flex flex-col gap-2">
-            <button onclick="waterNow(${plants.findIndex(p=>p.id===plant.id)})" class="bg-emerald-50 text-emerald-700 p-2 rounded-lg text-xs font-bold">💧</button>
-            <button onclick="editPlant(${plants.findIndex(p=>p.id===plant.id)})" class="bg-slate-50 text-slate-500 p-2 rounded-lg text-xs">✏️</button>
+          <div class="flex gap-2 pt-2 border-t border-slate-50">
+            <button onclick="waterNow(${originalIndex})" class="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold py-1.5 rounded transition">
+              💧 今日水やりした
+            </button>
+            <button onclick="editPlant(${originalIndex})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1.5 rounded">編集</button>
           </div>
         `;
         listEl.appendChild(card);
@@ -209,6 +212,12 @@
       document.getElementById('totalWater').innerText = (normalSum + maxSoak).toFixed(1);
       document.getElementById('normalWater').innerText = normalSum.toFixed(1);
       document.getElementById('maxSoak').innerText = maxSoak.toFixed(1);
+      
+      if (lastEditedName) {
+        const el = document.getElementById(`plant-card-${plants.find(p=>p.name===lastEditedName)?.id}`);
+        if(el) { el.classList.add('card-highlight'); setTimeout(()=>el.classList.remove('card-highlight'), 2000); }
+        lastEditedName = null;
+      }
     }
 
     function savePlant(e) {
@@ -226,6 +235,7 @@
         memo: document.getElementById('memo').value
       };
       if (index === -1) plants.push(data); else plants[index] = data;
+      lastEditedName = data.name;
       localStorage.setItem('plants', JSON.stringify(plants));
       resetForm(); renderList();
     }
@@ -241,6 +251,7 @@
       document.getElementById('memo').value = p.memo || '';
       
       if(p.image) { document.getElementById('imagePreview').src = p.image; document.getElementById('imagePreview').classList.remove('hidden'); document.getElementById('noImageText').classList.add('hidden'); }
+      else { document.getElementById('imagePreview').classList.add('hidden'); document.getElementById('noImageText').classList.remove('hidden'); }
       
       const select = document.getElementById('waterSelect');
       const custom = document.getElementById('waterCustom');
@@ -266,8 +277,30 @@
       document.getElementById('waterCustom').classList.add('hidden');
     }
 
-    function waterNow(idx) { plants[idx].lastWatered = new Date().toISOString().split('T')[0]; localStorage.setItem('plants', JSON.stringify(plants)); renderList(); }
-    function waterAllToday() { const t = new Date().toISOString().split('T')[0]; plants.forEach(p => { const next = new Date(p.lastWatered); next.setDate(next.getDate() + p.interval); if(next <= new Date()) p.lastWatered = t; }); localStorage.setItem('plants', JSON.stringify(plants)); renderList(); }
+    function waterNow(idx) { 
+        plants[idx].lastWatered = new Date().toISOString().split('T')[0]; 
+        lastEditedName = plants[idx].name;
+        localStorage.setItem('plants', JSON.stringify(plants)); 
+        renderList(); 
+    }
+    function waterAllToday() { 
+        const t = new Date().toISOString().split('T')[0]; 
+        let count = 0;
+        plants.forEach(p => { 
+            const next = new Date(p.lastWatered); next.setDate(next.getDate() + p.interval); 
+            if(next <= new Date()) { p.lastWatered = t; count++; }
+        }); 
+        if(count > 0) { localStorage.setItem('plants', JSON.stringify(plants)); renderList(); alert(`${count}件の植物の水やりを完了しました！`); }
+        else alert("本日水やりが必要な植物はありません。");
+    }
+    
+    // スクロール検知
+    window.addEventListener('scroll', () => {
+      const topBtn = document.getElementById('scrollToTopBtn');
+      if (window.scrollY > 300) topBtn.classList.remove('opacity-0', 'pointer-events-none');
+      else topBtn.classList.add('opacity-0', 'pointer-events-none');
+    });
+
     function exportData() { const d = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(plants)); const a = document.createElement('a'); a.href = d; a.download = "plants.json"; a.click(); }
     function importData(e) { const r = new FileReader(); r.onload = (ev) => { plants = JSON.parse(ev.target.result); migrateData(); renderList(); }; r.readAsText(e.target.files[0]); }
     
