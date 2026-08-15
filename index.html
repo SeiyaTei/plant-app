@@ -117,12 +117,12 @@
 
   <script>
     let plants = JSON.parse(localStorage.getItem('plants')) || [];
-    let lastEditedName = null;
+    let lastEditedId = null;
 
     function migrateData() {
       let isMigrated = false;
       plants.forEach(p => {
-        if (!p.id) p.id = Date.now() + Math.random();
+        if (!p.id) { p.id = Date.now() + Math.random(); isMigrated = true; }
         if (p.waterAmount && p.waterAmount >= 10) { p.waterAmount = parseFloat((p.waterAmount / 1000).toFixed(2)); isMigrated = true; }
       });
       if (isMigrated) localStorage.setItem('plants', JSON.stringify(plants));
@@ -198,12 +198,18 @@
         }
 
         const card = document.createElement('div');
-        card.id = `plant-card-${encodeURIComponent(plant.name)}`;
+        card.id = `plant-card-${plant.id}`;
         card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative";
         card.innerHTML = `
-          <div class="flex justify-between items-start mb-2">
-            <div><h3 class="font-bold text-slate-800 text-base">${plant.name}</h3><span class="inline-block text-[10px] px-2 py-0.5 rounded-full ${badgeClass} mt-1">${badgeText}</span></div>
-            <div class="text-right"><span class="text-xs text-slate-400">次回予定</span><div class="text-xs font-bold text-slate-700">${nextDate.getMonth()+1}/${nextDate.getDate()}</div></div>
+          <div class="flex justify-between items-start gap-2 mb-2">
+            <div class="flex-1 min-w-0 pr-1">
+              <h3 class="font-bold text-slate-800 text-base break-words">${plant.name}</h3>
+              <span class="inline-block text-[10px] px-2 py-0.5 rounded-full ${badgeClass} mt-1">${badgeText}</span>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <span class="text-xs text-slate-400 whitespace-nowrap">次回予定</span>
+              <div class="text-xs font-bold text-slate-700 whitespace-nowrap">${nextDate.getMonth()+1}/${nextDate.getDate()}</div>
+            </div>
           </div>
           <div class="text-xs text-slate-500 mb-3 space-y-0.5">
             <div>間隔: ${plant.interval}日 / 水量: ${amount} L ${plant.isSoak ? '<span class="text-amber-600 font-bold">(どぶ漬け)</span>' : ''}</div>
@@ -228,18 +234,17 @@
       document.getElementById('tomorrowMaxSoak').innerText = parseFloat(tomorrowMaxSoak.toFixed(2));
       document.getElementById('tomorrowTotalWater').innerText = parseFloat((tomorrowNormal + tomorrowMaxSoak).toFixed(2));
 
-      if (lastEditedName) {
+      if (lastEditedId) {
         setTimeout(() => {
-          const target = document.getElementById(`plant-card-${encodeURIComponent(lastEditedName)}`);
+          const target = document.getElementById(`plant-card-${lastEditedId}`);
           if (target) { target.scrollIntoView({ behavior: 'smooth', block: 'center' }); target.classList.add('card-highlight'); }
-          lastEditedName = null;
+          lastEditedId = null;
         }, 100);
       }
     }
 
-    function waterNow(index) { plants[index].lastWatered = getTodayString(); lastEditedName = plants[index].name; savePlantsToStorage(); }
+    function waterNow(index) { plants[index].lastWatered = getTodayString(); lastEditedId = plants[index].id; savePlantsToStorage(); }
     
-    // 修正: 判定ロジックを画面描画と同じ diffDays <= 0 に統一
     function waterAllToday() {
       const today = new Date(); today.setHours(0,0,0,0);
       let count = 0;
@@ -260,7 +265,7 @@
       const index = parseInt(document.getElementById('editIndex').value);
       const data = { id: index === -1 ? Date.now() : plants[index].id, name: document.getElementById('name').value, interval: parseInt(document.getElementById('interval').value), waterAmount: getSelectedWaterAmount(), lastWatered: document.getElementById('lastWatered').value, isSoak: document.getElementById('isSoak').checked };
       if (index === -1) plants.push(data); else plants[index] = data;
-      lastEditedName = data.name;
+      lastEditedId = data.id;
       resetForm();
       savePlantsToStorage();
     }
