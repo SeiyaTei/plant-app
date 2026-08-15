@@ -12,24 +12,13 @@
   <meta name="apple-mobile-web-app-title" content="水やり管理">
   <meta name="theme-color" content="#047857">
 
-  <!-- 🌱 アイコン設定 -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
 
-  <!-- Manifestファイル参照 -->
   <link rel="manifest" href="manifest.json">
-
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    html { scroll-behavior: smooth; }
-    @keyframes highlight {
-      0% { background-color: #d1fae5; }
-      100% { background-color: #ffffff; }
-    }
-    .card-highlight { animation: highlight 2s ease-out; }
-  </style>
 </head>
-<body class="bg-slate-100 text-slate-800 p-4 max-w-md mx-auto min-h-screen pb-24 relative">
+<body class="bg-slate-100 text-slate-800 p-4 max-w-md mx-auto min-h-screen pb-24">
 
   <h1 class="text-2xl font-bold mb-4 text-emerald-700 text-center">🌱 植物水やり管理</h1>
 
@@ -82,8 +71,8 @@
   </div>
 
   <!-- 登録・編集フォーム -->
-  <form id="plantForm" onsubmit="return false;" class="bg-white p-4 rounded-xl shadow-md mb-6">
-    <h2 id="formTitle" class="text-sm font-bold mb-3 text-slate-700">新しい植物を追加</h2>
+  <form id="plantForm" onsubmit="return false;" class="bg-white p-4 rounded-xl shadow-md mb-6 border border-slate-200">
+    <h2 id="formTitle" class="text-sm font-bold mb-3 text-slate-700">新しい植物を追加 / 編集</h2>
     <input type="hidden" id="editIndex" value="-1">
     <input type="hidden" id="imageData" value="">
     
@@ -116,20 +105,7 @@
       </div>
       <div>
         <label class="block text-xs font-semibold text-slate-500 mb-1">1回の水量 (L)</label>
-        <select id="waterSelect" class="w-full border rounded-lg p-2 text-sm focus:outline-emerald-500 bg-white mb-1">
-          <option value="0.5">0.5 L</option>
-          <option value="1">1.0 L</option>
-          <option value="1.5">1.5 L</option>
-          <option value="2">2.0 L</option>
-          <option value="2.5">2.5 L</option>
-          <option value="3">3.0 L</option>
-          <option value="3.5">3.5 L</option>
-          <option value="4">4.0 L</option>
-          <option value="4.5">4.5 L</option>
-          <option value="5">5.0 L</option>
-          <option value="custom">その他 (手入力)</option>
-        </select>
-        <input type="number" id="waterCustom" step="0.1" min="0" placeholder="水量 (L)" class="hidden w-full border rounded-lg p-2 text-sm focus:outline-emerald-500">
+        <input type="number" id="waterAmount" step="0.1" min="0" value="0.5" class="w-full border rounded-lg p-2 text-sm focus:outline-emerald-500">
       </div>
     </div>
 
@@ -169,7 +145,6 @@
   <div id="plantList" class="space-y-3"></div>
 
   <script>
-    // PWAインストール条件を満たすための軽量Service Worker登録
     if ('serviceWorker' in navigator) {
       const swCode = `
         self.addEventListener('install', () => self.skipWaiting());
@@ -290,12 +265,12 @@
               <div>間隔: ${plant.interval}日 / 水量: ${amount} L ${plant.isSoak ? '(どぶ漬け)' : ''}</div>
               <div>前回: ${plant.lastWatered}</div>
             </div>
-            ${plant.image ? `<img src="${plant.image}" class="w-14 h-14 rounded-lg object-cover">` : ''}
+            ${plant.image ? `<img src="${plant.image}" class="w-14 h-14 rounded-lg object-cover">` : '<div class="w-14 h-14 rounded-lg bg-slate-100 border border-dashed flex items-center justify-center text-[10px] text-slate-400">画像なし</div>'}
           </div>
           <div class="flex gap-2 pt-2 border-t border-slate-50">
             <button type="button" onclick="waterNow(${idx})" class="flex-1 bg-emerald-50 text-emerald-700 text-xs font-bold py-1.5 rounded">💧 今日水やりした</button>
-            <button type="button" onclick="editPlant(${idx})" class="text-xs bg-slate-100 text-slate-600 px-2 py-1.5 rounded">編集</button>
-            <button type="button" onclick="deletePlant(${idx})" class="text-xs bg-rose-50 text-rose-600 px-2 py-1.5 rounded">削除</button>
+            <button type="button" onclick="editPlant(${idx})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded font-semibold">編集</button>
+            <button type="button" onclick="deletePlant(${idx})" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 px-2 py-1.5 rounded">削除</button>
           </div>
         `;
         listEl.appendChild(card);
@@ -322,8 +297,10 @@
     function editPlant(idx) {
       const p = plants[idx];
       if (!p) return;
+
       document.getElementById('name').value = p.name;
       document.getElementById('interval').value = p.interval;
+      document.getElementById('waterAmount').value = p.waterAmount;
       document.getElementById('lastWatered').value = p.lastWatered;
       document.getElementById('isSoak').checked = p.isSoak;
       document.getElementById('editIndex').value = idx;
@@ -342,6 +319,9 @@
 
       document.getElementById('submitBtn').innerText = "更新する";
       document.getElementById('cancelBtn').classList.remove('hidden');
+
+      // 編集フォームの場所までスムーズスクロール
+      document.getElementById('plantForm').scrollIntoView({ behavior: 'smooth' });
     }
 
     function deletePlant(idx) {
@@ -354,6 +334,7 @@
     function resetForm() {
       document.getElementById('name').value = '';
       document.getElementById('interval').value = '7';
+      document.getElementById('waterAmount').value = '0.5';
       document.getElementById('editIndex').value = "-1";
       document.getElementById('lastWatered').value = getTodayString();
       document.getElementById('isSoak').checked = false;
@@ -399,7 +380,7 @@
           id: idx === -1 ? (Date.now() + Math.random()) : plants[idx].id,
           name: name,
           interval: parseInt(document.getElementById('interval').value, 10) || 7,
-          waterAmount: parseFloat(document.getElementById('waterSelect').value) || 0.5,
+          waterAmount: parseFloat(document.getElementById('waterAmount').value) || 0.5,
           lastWatered: document.getElementById('lastWatered').value || getTodayString(),
           isSoak: document.getElementById('isSoak').checked,
           image: document.getElementById('imageData').value || null
