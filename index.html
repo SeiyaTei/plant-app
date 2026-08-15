@@ -79,10 +79,28 @@
   <div id="plantFormContainer" class="bg-white p-4 rounded-xl shadow-md mb-6">
     <h2 id="formTitle" class="text-sm font-bold mb-3 text-slate-700">新しい植物を追加</h2>
     <input type="hidden" id="editIndex" value="-1">
+    <input type="hidden" id="imageData" value="">
     
     <div class="mb-3">
       <label class="block text-xs font-semibold text-slate-500 mb-1">植物の名前</label>
       <input type="text" id="name" placeholder="例: パキラ" class="w-full border rounded-lg p-2 text-sm focus:outline-emerald-500">
+    </div>
+
+    <!-- 写真選択エリア -->
+    <div class="mb-3">
+      <label class="block text-xs font-semibold text-slate-500 mb-1">植物の写真 (任意)</label>
+      <div class="flex items-center gap-3">
+        <div id="formImagePreview" class="w-14 h-14 rounded-lg bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center overflow-hidden flex-shrink-0 text-slate-400 text-xs">
+          なし
+        </div>
+        <div class="flex-1">
+          <label class="inline-block bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2 px-3 rounded-lg cursor-pointer transition border border-slate-200">
+            📷 写真を選択
+            <input type="file" accept="image/*" onchange="handleFormImageSelect(this)" class="hidden">
+          </label>
+          <button type="button" id="removeImageBtn" onclick="removeFormImage()" class="hidden text-xs text-rose-500 ml-2 hover:underline">削除</button>
+        </div>
+      </div>
     </div>
 
     <div class="grid grid-cols-2 gap-2 mb-3">
@@ -105,7 +123,6 @@
           <option value="5">5.0 L</option>
           <option value="custom">その他 (手入力)</option>
         </select>
-        <!-- 手入力用インプット -->
         <input type="number" id="waterCustom" step="0.1" min="0" placeholder="水量 (L)" class="hidden w-full border rounded-lg p-2 text-sm focus:outline-emerald-500">
       </div>
     </div>
@@ -145,6 +162,9 @@
 
   <div id="plantList" class="space-y-3"></div>
 
+  <!-- カードからの直接画像アップロード用非表示input -->
+  <input type="file" id="cardImageInput" accept="image/*" class="hidden" onchange="handleCardImageSelect(this)">
+
   <!-- トップに戻るボタン -->
   <button id="scrollToTopBtn" onclick="scrollToTop()" class="fixed bottom-6 right-6 bg-emerald-600 text-white p-3 rounded-full shadow-lg opacity-0 pointer-events-none transition-all duration-300 hover:bg-emerald-700 focus:outline-none z-50">
     ▲
@@ -153,8 +173,8 @@
   <script>
     let plants = [];
     let lastEditedName = null;
+    let currentTargetPlantIndex = null; // カードから写真を選択する対象のインデックス
 
-    // 本日の日付を取得
     function getTodayString() {
       const today = new Date();
       const year = today.getFullYear();
@@ -183,8 +203,88 @@
         interval: interval,
         waterAmount: waterAmount,
         lastWatered: String(lastWatered),
-        isSoak: Boolean(item.isSoak || item.soak || item.dobu)
+        isSoak: Boolean(item.isSoak || item.soak || item.dobu),
+        image: item.image || item.photo || null
       };
+    }
+
+    // 画像圧縮処理（長辺400px、画質75%）
+    function compressImage(file, callback) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 400;
+
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // 軽量なJPEG DataURLを生成
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+          callback(dataUrl);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // フォームの写真選択ハンドラ
+    function handleFormImageSelect(input) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+
+      compressImage(file, function(compressedBase64) {
+        document.getElementById('imageData').value = compressedBase64;
+        const preview = document.getElementById('formImagePreview');
+        preview.innerHTML = `<img src="${compressedBase64}" class="w-full h-full object-cover">`;
+        document.getElementById('removeImageBtn').classList.remove('hidden');
+      });
+      input.value = '';
+    }
+
+    // フォームの写真削除
+    function removeFormImage() {
+      document.getElementById('imageData').value = '';
+      const preview = document.getElementById('formImagePreview');
+      preview.innerHTML = 'なし';
+      document.getElementById('removeImageBtn').classList.add('hidden');
+    }
+
+    // カードからのダイレクト写真追加
+    function triggerCardImageSelect(originalIndex) {
+      currentTargetPlantIndex = originalIndex;
+      document.getElementById('cardImageInput').click();
+    }
+
+    function handleCardImageSelect(input) {
+      const file = input.files && input.files[0];
+      if (!file || currentTargetPlantIndex === null) return;
+
+      compressImage(file, function(compressedBase64) {
+        if (plants[currentTargetPlantIndex]) {
+          plants[currentTargetPlantIndex].image = compressedBase64;
+          savePlantsToStorage();
+        }
+        currentTargetPlantIndex = null;
+      });
+      input.value = '';
     }
 
     // ローカルストレージからの読み込み
@@ -209,6 +309,7 @@
         localStorage.setItem('plants', JSON.stringify(plants));
       } catch (err) {
         console.error("ストレージ保存エラー:", err);
+        alert("ストレージ容量上限に達した可能性があります。画像を減らすか整理してください。");
       }
       renderList();
     }
@@ -217,7 +318,6 @@
     loadPlantsFromStorage();
     document.getElementById('lastWatered').value = getTodayString();
 
-    // 手入力フィールド切り替え
     function toggleCustomWaterInput() {
       const select = document.getElementById('waterSelect');
       const customInput = document.getElementById('waterCustom');
@@ -228,7 +328,6 @@
       }
     }
 
-    // 水量取得
     function getSelectedWaterAmount() {
       const select = document.getElementById('waterSelect');
       if (select.value === 'custom') {
@@ -237,7 +336,6 @@
       return parseFloat(select.value);
     }
 
-    // 水量セット
     function setSelectedWaterAmount(val) {
       const select = document.getElementById('waterSelect');
       const customInput = document.getElementById('waterCustom');
@@ -254,14 +352,13 @@
       }
     }
 
-    // 次回水やり日計算
     function getNextWaterDate(lastWatered, interval) {
       const date = new Date(lastWatered);
       date.setDate(date.getDate() + parseInt(interval, 10));
       return date;
     }
 
-    // 植物リストの描画
+    // 植物リストの描画（カードに写真配置エリアを追加）
     function renderList() {
       const listEl = document.getElementById('plantList');
       listEl.innerHTML = '';
@@ -331,27 +428,51 @@
           badgeText = `${Math.abs(diffDays)} 日遅れ！`;
         }
 
+        // 写真エリアのHTML生成
+        let photoAreaHtml = '';
+        if (plant.image) {
+          photoAreaHtml = `
+            <div onclick="triggerCardImageSelect(${originalIndex})" class="w-16 h-16 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 cursor-pointer relative group flex-shrink-0 shadow-sm">
+              <img src="${plant.image}" class="w-full h-full object-cover">
+              <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[10px] font-bold">変更</div>
+            </div>
+          `;
+        } else {
+          photoAreaHtml = `
+            <div onclick="triggerCardImageSelect(${originalIndex})" class="w-16 h-16 rounded-lg border-2 border-dashed border-slate-200 hover:border-emerald-400 bg-slate-50 hover:bg-emerald-50/50 flex flex-col items-center justify-center cursor-pointer transition flex-shrink-0 text-slate-400 hover:text-emerald-600">
+              <span class="text-xs">📷</span>
+              <span class="text-[9px] font-bold mt-0.5">写真追加</span>
+            </div>
+          `;
+        }
+
         const card = document.createElement('div');
         card.id = `plant-card-${encodeURIComponent(plant.name)}`;
         card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative transition-all";
         card.innerHTML = `
-          <div class="flex justify-between items-start mb-2">
-            <div>
-              <h3 class="font-bold text-slate-800 text-base">${plant.name}</h3>
-              <span class="inline-block text-[10px] px-2 py-0.5 rounded-full ${badgeClass} mt-1">${badgeText}</span>
+          <div class="flex justify-between items-start gap-2 mb-2">
+            <!-- 左側：名前・タグ・水やり詳細 -->
+            <div class="flex-1 min-w-0">
+              <h3 class="font-bold text-slate-800 text-base truncate">${plant.name}</h3>
+              <span class="inline-block text-[10px] px-2 py-0.5 rounded-full ${badgeClass} mt-1 mb-2">${badgeText}</span>
+              
+              <div class="text-xs text-slate-500 space-y-0.5">
+                <div>間隔: <span class="font-semibold text-slate-700">${plant.interval}日</span> / 水量: <span class="font-semibold text-slate-700">${amount} L</span> ${plant.isSoak ? '<span class="text-amber-600 font-bold">(どぶ漬け)</span>' : ''}</div>
+                <div>前回水やり: ${plant.lastWatered}</div>
+              </div>
             </div>
-            <div class="text-right">
-              <span class="text-xs text-slate-400">次回予定</span>
+
+            <!-- 中央/右側：画像エリア（ご指定の赤枠部分） -->
+            ${photoAreaHtml}
+
+            <!-- 右側：次回予定日 -->
+            <div class="text-right flex-shrink-0">
+              <span class="text-[10px] text-slate-400 block">次回予定</span>
               <div class="text-xs font-bold text-slate-700">${nextDate.getFullYear()}/${nextDate.getMonth()+1}/${nextDate.getDate()}</div>
             </div>
           </div>
-          
-          <div class="text-xs text-slate-500 mb-3 space-y-0.5">
-            <div>間隔: <span class="font-semibold text-slate-700">${plant.interval}日</span> / 水量: <span class="font-semibold text-slate-700">${amount} L</span> ${plant.isSoak ? '<span class="text-amber-600 font-bold">(どぶ漬け)</span>' : ''}</div>
-            <div>前回水やり: ${plant.lastWatered}</div>
-          </div>
 
-          <div class="flex gap-2 pt-2 border-t border-slate-50">
+          <div class="flex gap-2 pt-2 border-t border-slate-50 mt-1">
             <button type="button" onclick="waterNow(${originalIndex})" class="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold py-1.5 rounded transition">
               💧 今日水やりした
             </button>
@@ -388,7 +509,6 @@
       }
     }
 
-    // 今日の水やり完了
     function waterNow(index) {
       if (plants[index]) {
         plants[index].lastWatered = getTodayString();
@@ -397,7 +517,6 @@
       }
     }
 
-    // 一括水やり完了
     function waterAllToday() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -420,7 +539,7 @@
       }
     }
 
-    // ★重要: 植物登録機能（ボタンクリックで起動）
+    // 植物登録機能
     function savePlant() {
       const nameInput = document.getElementById('name');
       const name = nameInput.value.trim();
@@ -436,6 +555,7 @@
       const lastWateredVal = document.getElementById('lastWatered').value || getTodayString();
       const waterAmountVal = getSelectedWaterAmount();
       const isSoakVal = document.getElementById('isSoak').checked;
+      const imageVal = document.getElementById('imageData').value || null;
 
       const newPlantData = {
         id: index === -1 ? (Date.now() + Math.random()) : plants[index].id,
@@ -443,7 +563,8 @@
         interval: intervalVal,
         waterAmount: waterAmountVal,
         lastWatered: lastWateredVal,
-        isSoak: isSoakVal
+        isSoak: isSoakVal,
+        image: imageVal
       };
 
       if (index === -1) {
@@ -469,6 +590,17 @@
       document.getElementById('isSoak').checked = p.isSoak;
       document.getElementById('editIndex').value = index;
 
+      // 画像プレビューのセット
+      document.getElementById('imageData').value = p.image || '';
+      const preview = document.getElementById('formImagePreview');
+      if (p.image) {
+        preview.innerHTML = `<img src="${p.image}" class="w-full h-full object-cover">`;
+        document.getElementById('removeImageBtn').classList.remove('hidden');
+      } else {
+        preview.innerHTML = 'なし';
+        document.getElementById('removeImageBtn').classList.add('hidden');
+      }
+
       document.getElementById('formTitle').innerText = "植物の編集";
       document.getElementById('submitBtn').innerText = "更新する";
       document.getElementById('cancelBtn').classList.remove('hidden');
@@ -476,7 +608,6 @@
       document.getElementById('plantFormContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    // 削除処理
     function deletePlant(index) {
       if (plants[index] && confirm(`${plants[index].name} を削除してもよろしいですか？`)) {
         plants.splice(index, 1);
@@ -484,7 +615,6 @@
       }
     }
 
-    // フォームリセット
     function resetForm() {
       document.getElementById('name').value = '';
       document.getElementById('interval').value = '7';
@@ -492,13 +622,13 @@
       document.getElementById('lastWatered').value = getTodayString();
       document.getElementById('isSoak').checked = false;
       setSelectedWaterAmount(0.5);
+      removeFormImage();
       
       document.getElementById('formTitle').innerText = "新しい植物を追加";
       document.getElementById('submitBtn').innerText = "登録する";
       document.getElementById('cancelBtn').classList.add('hidden');
     }
 
-    // トップに戻るスクロール
     function scrollToTop() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -514,7 +644,6 @@
       }
     });
 
-    // データエクスポート
     function exportData() {
       try {
         const jsonStr = JSON.stringify(plants, null, 2);
@@ -532,7 +661,6 @@
       }
     }
 
-    // ★重要: データインポート機能（要素を直接受け取る安全設計）
     function importData(inputEl) {
       const file = inputEl.files && inputEl.files[0];
       if (!file) return;
@@ -575,7 +703,7 @@
         } catch (err) {
           alert("ファイルの読み込み・解析に失敗しました:\n" + err.message);
         } finally {
-          inputEl.value = ''; // ファイル選択をリセット
+          inputEl.value = '';
         }
       };
 
