@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>植物水やり管理アプリ</title>
 
-  <!-- PWA・ホーム画面インストール用設定 -->
+  <!-- PWA・ホーム画面設定 -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -48,7 +48,7 @@
         通常: <span id="normalWater">0</span>L / 漬け最大: <span id="maxSoak">0</span>L
       </div>
     </div>
-    <button type="button" onclick="waterAllToday()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-lg shadow-sm transition flex items-center justify-center gap-1 mt-1">
+    <button type="button" id="waterAllBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-lg shadow-sm transition flex items-center justify-center gap-1 mt-1">
       ✨ 本日の水やりをすべて完了する
     </button>
   </div>
@@ -72,24 +72,24 @@
 
   <!-- データバックアップ / ロード機能 -->
   <div class="flex gap-2 mb-6">
-    <button type="button" onclick="exportData()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-2.5 px-3 rounded-lg font-bold transition">
+    <button type="button" id="exportBtn" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-2.5 px-3 rounded-lg font-bold transition">
       📤 エクスポート (保存)
     </button>
     <label class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-2.5 px-3 rounded-lg font-bold transition text-center cursor-pointer block">
       📥 インポート (ロード)
-      <input type="file" id="importFile" accept=".json,text/plain,application/json" onchange="importData(this)" class="hidden">
+      <input type="file" id="importFile" accept=".json,text/plain,application/json" class="hidden">
     </label>
   </div>
 
   <!-- 登録・編集フォーム -->
-  <div class="bg-white p-4 rounded-xl shadow-md mb-6">
+  <form id="plantForm" onsubmit="return false;" class="bg-white p-4 rounded-xl shadow-md mb-6">
     <h2 id="formTitle" class="text-sm font-bold mb-3 text-slate-700">新しい植物を追加</h2>
     <input type="hidden" id="editIndex" value="-1">
     <input type="hidden" id="imageData" value="">
     
     <div class="mb-3">
       <label class="block text-xs font-semibold text-slate-500 mb-1">植物の名前 <span class="text-rose-500">*</span></label>
-      <input type="text" id="name" placeholder="例: パキラ" class="w-full border rounded-lg p-2 text-sm focus:outline-emerald-500">
+      <input type="text" id="name" placeholder="例: パキラ" required class="w-full border rounded-lg p-2 text-sm focus:outline-emerald-500">
     </div>
 
     <!-- 写真選択エリア -->
@@ -102,9 +102,9 @@
         <div class="flex-1">
           <label class="inline-block bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2 px-3 rounded-lg border border-slate-200 transition cursor-pointer">
             📷 写真を選択
-            <input type="file" accept="image/*" onchange="handleFormImageSelect(this)" class="hidden">
+            <input type="file" id="formImageInput" accept="image/*" class="hidden">
           </label>
-          <button type="button" id="removeImageBtn" onclick="removeFormImage()" class="hidden text-xs text-rose-500 ml-2 hover:underline">削除</button>
+          <button type="button" id="removeImageBtn" class="hidden text-xs text-rose-500 ml-2 hover:underline">削除</button>
         </div>
       </div>
     </div>
@@ -116,7 +116,7 @@
       </div>
       <div>
         <label class="block text-xs font-semibold text-slate-500 mb-1">1回の水量 (L)</label>
-        <select id="waterSelect" onchange="toggleCustomWaterInput()" class="w-full border rounded-lg p-2 text-sm focus:outline-emerald-500 bg-white mb-1">
+        <select id="waterSelect" class="w-full border rounded-lg p-2 text-sm focus:outline-emerald-500 bg-white mb-1">
           <option value="0.5">0.5 L</option>
           <option value="1">1.0 L</option>
           <option value="1.5">1.5 L</option>
@@ -144,21 +144,21 @@
     </div>
 
     <div class="flex gap-2">
-      <button type="button" id="submitBtn" onclick="savePlant()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-sm transition">
+      <button type="button" id="submitBtn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-sm transition">
         登録する
       </button>
-      <button type="button" id="cancelBtn" onclick="resetForm()" class="hidden bg-slate-300 text-slate-700 font-bold py-2 px-3 rounded-lg text-sm">
+      <button type="button" id="cancelBtn" class="hidden bg-slate-300 text-slate-700 font-bold py-2 px-3 rounded-lg text-sm">
         キャンセル
       </button>
     </div>
-  </div>
+  </form>
 
   <!-- 植物一覧ヘッダー -->
   <div class="mb-2 flex justify-between items-center">
     <h2 class="text-sm font-bold text-slate-600">植物一覧</h2>
     <div class="flex items-center gap-1">
       <label for="sortMode" class="text-xs text-slate-400 font-semibold">並び順:</label>
-      <select id="sortMode" onchange="renderList()" class="text-xs bg-white border rounded-lg px-2 py-1 text-slate-700 font-semibold focus:outline-emerald-500 shadow-sm">
+      <select id="sortMode" class="text-xs bg-white border rounded-lg px-2 py-1 text-slate-700 font-semibold focus:outline-emerald-500 shadow-sm">
         <option value="nextDate">次回水やりが近い順</option>
         <option value="created">登録順</option>
         <option value="name">名前順 (50音)</option>
@@ -169,305 +169,248 @@
   <div id="plantList" class="space-y-3"></div>
 
   <script>
-    window.plants = [];
-    window.lastEditedName = null;
+    let plants = [];
+    let lastEditedName = null;
 
-    // --- Service Worker設定 (PWA化・高速キャッシュ制御) ---
+    // 古いキャッシュ制御を完全に削除
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        const swCode = `
-          const CACHE_NAME = 'plant-app-v2';
-          self.addEventListener('install', e => self.skipWaiting());
-          self.addEventListener('activate', e => e.waitUntil(clients.claim()));
-          self.addEventListener('fetch', e => {
-            e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-          });
-        `;
-        const blob = new Blob([swCode], { type: 'text/javascript' });
-        const swUrl = URL.createObjectURL(blob);
-        navigator.serviceWorker.register(swUrl).catch(err => console.log('SW error:', err));
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        for (let reg of regs) reg.unregister();
       });
     }
 
-    window.getTodayString = function() {
+    function getTodayString() {
       const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
 
-    window.normalizePlant = function(item) {
+    function normalizePlant(item) {
       if (!item || typeof item !== 'object') return null;
-      const name = item.name || item.plantName || item.title || '無題の植物';
-      let interval = parseInt(item.interval || item.intervalDays || item.waterInterval || 7, 10);
-      if (isNaN(interval) || interval <= 0) interval = 7;
-
-      let waterAmount = parseFloat(item.waterAmount || item.water || item.amount || 0.5);
-      if (isNaN(waterAmount)) waterAmount = 0.5;
-
-      let lastWatered = item.lastWatered || item.lastWateredDate || item.date;
-      if (!lastWatered || String(lastWatered).trim() === '') {
-        lastWatered = window.getTodayString();
-      }
-
       return {
         id: item.id || (Date.now() + Math.random()),
-        name: String(name),
-        interval: interval,
-        waterAmount: waterAmount,
-        lastWatered: String(lastWatered),
-        isSoak: Boolean(item.isSoak || item.soak || item.dobu),
+        name: String(item.name || item.plantName || '無題の植物'),
+        interval: parseInt(item.interval || item.intervalDays || 7, 10) || 7,
+        waterAmount: parseFloat(item.waterAmount || item.water || 0.5) || 0.5,
+        lastWatered: String(item.lastWatered || getTodayString()),
+        isSoak: Boolean(item.isSoak || item.soak),
         image: item.image || item.photo || null
       };
-    };
+    }
 
-    window.handleFormImageSelect = function(input) {
-      const file = input.files && input.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          const maxDim = 300;
-
-          if (width > height) {
-            if (width > maxDim) {
-              height = Math.round((height * maxDim) / width);
-              width = maxDim;
-            }
-          } else {
-            if (height > maxDim) {
-              width = Math.round((width * maxDim) / height);
-              height = maxDim;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
-          document.getElementById('imageData').value = compressedBase64;
-          const preview = document.getElementById('formImagePreview');
-          preview.innerHTML = `<img src="${compressedBase64}" class="w-full h-full object-cover">`;
-          document.getElementById('removeImageBtn').classList.remove('hidden');
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-      input.value = '';
-    };
-
-    window.removeFormImage = function() {
-      document.getElementById('imageData').value = '';
-      document.getElementById('formImagePreview').innerHTML = 'なし';
-      document.getElementById('removeImageBtn').classList.add('hidden');
-    };
-
-    window.handleCardImageSelect = function(input, originalIndex) {
-      const file = input.files && input.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          const maxDim = 300;
-
-          if (width > height) {
-            if (width > maxDim) {
-              height = Math.round((height * maxDim) / width);
-              width = maxDim;
-            }
-          } else {
-            if (height > maxDim) {
-              width = Math.round((width * maxDim) / height);
-              height = maxDim;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
-          if (window.plants[originalIndex]) {
-            window.plants[originalIndex].image = compressedBase64;
-            window.savePlantsToStorage();
-          }
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-      input.value = '';
-    };
-
-    window.loadPlantsFromStorage = function() {
+    function loadPlants() {
       try {
         const stored = localStorage.getItem('plants');
         if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) {
-            window.plants = parsed.map(window.normalizePlant).filter(Boolean);
-          }
+          plants = JSON.parse(stored).map(normalizePlant).filter(Boolean);
         }
-      } catch (err) {
-        console.error("ストレージ読み込みエラー:", err);
-        window.plants = [];
+      } catch (e) {
+        plants = [];
       }
-    };
+    }
 
-    window.savePlantsToStorage = function() {
+    function savePlants() {
       try {
-        localStorage.setItem('plants', JSON.stringify(window.plants));
-      } catch (err) {
-        alert("容量オーバーのため、画像なしで保存します。");
-        try {
-          const safePlants = window.plants.map(p => ({ ...p, image: null }));
-          localStorage.setItem('plants', JSON.stringify(safePlants));
-          window.plants = safePlants;
-        } catch (e) {
-          alert("保存に失敗しました。不要な植物を削除してください。");
-        }
+        localStorage.setItem('plants', JSON.stringify(plants));
+      } catch (e) {
+        alert("画像容量が大きすぎるため、画像を除外して保存します。");
+        plants = plants.map(p => ({ ...p, image: null }));
+        localStorage.setItem('plants', JSON.stringify(plants));
       }
-      window.renderList();
-    };
+      renderList();
+    }
 
-    window.toggleCustomWaterInput = function() {
-      const select = document.getElementById('waterSelect');
-      const customInput = document.getElementById('waterCustom');
-      if (select.value === 'custom') {
-        customInput.classList.remove('hidden');
-      } else {
-        customInput.classList.add('hidden');
-      }
-    };
+    function getNextWaterDate(lastWatered, interval) {
+      const d = new Date(lastWatered);
+      if (isNaN(d.getTime())) return new Date();
+      d.setDate(d.getDate() + parseInt(interval, 10));
+      return d;
+    }
 
-    window.getSelectedWaterAmount = function() {
-      const select = document.getElementById('waterSelect');
-      if (select.value === 'custom') {
-        const customInput = document.getElementById('waterCustom');
-        return parseFloat(customInput.value) || 0;
-      }
-      return parseFloat(select.value) || 0.5;
-    };
-
-    window.setSelectedWaterAmount = function(val) {
-      const select = document.getElementById('waterSelect');
-      const customInput = document.getElementById('waterCustom');
-      const presetValues = ["0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "4.5", "5"];
-
-      if (presetValues.includes(String(val))) {
-        select.value = String(val);
-        customInput.classList.add('hidden');
-        customInput.value = '';
-      } else {
-        select.value = 'custom';
-        customInput.classList.remove('hidden');
-        customInput.value = val;
-      }
-    };
-
-    window.getNextWaterDate = function(lastWatered, interval) {
-      const date = new Date(lastWatered);
-      if (isNaN(date.getTime())) return new Date();
-      date.setDate(date.getDate() + parseInt(interval, 10));
-      return date;
-    };
-
-    window.renderList = function() {
+    function renderList() {
       const listEl = document.getElementById('plantList');
       if (!listEl) return;
       listEl.innerHTML = '';
 
-      const sortSelect = document.getElementById('sortMode');
-      const sortMode = sortSelect ? sortSelect.value : 'nextDate';
-      let displayPlants = [...window.plants];
+      const sortMode = document.getElementById('sortMode').value;
+      let displayPlants = [...plants];
 
       if (sortMode === 'nextDate') {
-        displayPlants.sort((a, b) => window.getNextWaterDate(a.lastWatered, a.interval) - window.getNextWaterDate(b.lastWatered, b.interval));
+        displayPlants.sort((a, b) => getNextWaterDate(a.lastWatered, a.interval) - getNextWaterDate(b.lastWatered, b.interval));
       } else if (sortMode === 'name') {
         displayPlants.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
       } else if (sortMode === 'created') {
         displayPlants.sort((a, b) => a.id - b.id);
       }
 
-      let normalSum = 0;
-      let maxSoak = 0;
-      let todayPlantCount = 0;
-
-      let tomorrowNormalSum = 0;
-      let tomorrowMaxSoak = 0;
-      let tomorrowPlantCount = 0;
-
+      let normalSum = 0, maxSoak = 0, todayCount = 0;
+      let tomorrowNormalSum = 0, tomorrowMaxSoak = 0, tomorrowCount = 0;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      displayPlants.forEach((plant) => {
-        const originalIndex = window.plants.findIndex(p => p.id === plant.id);
-        const nextDate = window.getNextWaterDate(plant.lastWatered, plant.interval);
+      displayPlants.forEach(plant => {
+        const idx = plants.findIndex(p => p.id === plant.id);
+        const nextDate = getNextWaterDate(plant.lastWatered, plant.interval);
         nextDate.setHours(0, 0, 0, 0);
         
-        const diffDays = Math.ceil((nextDate - today) / (1000 * 60 * 60 * 24));
+        const diff = Math.ceil((nextDate - today) / (1000 * 60 * 60 * 24));
         const amount = parseFloat(plant.waterAmount) || 0;
 
-        if (diffDays <= 0) {
-          todayPlantCount++;
-          if (plant.isSoak) {
-            if (amount > maxSoak) maxSoak = amount;
-          } else {
-            normalSum += amount;
-          }
+        if (diff <= 0) {
+          todayCount++;
+          if (plant.isSoak) { if (amount > maxSoak) maxSoak = amount; }
+          else { normalSum += amount; }
         }
 
-        if (diffDays === 1) {
-          tomorrowPlantCount++;
-          if (plant.isSoak) {
-            if (amount > tomorrowMaxSoak) tomorrowMaxSoak = amount;
-          } else {
-            tomorrowNormalSum += amount;
-          }
+        if (diff === 1) {
+          tomorrowCount++;
+          if (plant.isSoak) { if (amount > tomorrowMaxSoak) tomorrowMaxSoak = amount; }
+          else { tomorrowNormalSum += amount; }
         }
 
         let badgeClass = "bg-slate-100 text-slate-600";
-        let badgeText = `あと ${diffDays} 日`;
-        if (diffDays === 0) {
-          badgeClass = "bg-amber-100 text-amber-700 font-bold border border-amber-300";
-          badgeText = "今日が予定日！";
-        } else if (diffDays === 1) {
-          badgeClass = "bg-blue-100 text-blue-700 font-bold border border-blue-300";
-          badgeText = "明日が予定日";
-        } else if (diffDays < 0) {
-          badgeClass = "bg-rose-100 text-rose-700 font-bold border border-rose-300";
-          badgeText = `${Math.abs(diffDays)} 日遅れ！`;
-        }
-
-        let photoAreaHtml = plant.image ? `
-          <label class="w-14 h-14 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 cursor-pointer relative group flex-shrink-0 shadow-sm block">
-            <img src="${plant.image}" class="w-full h-full object-cover">
-            <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[10px] font-bold">変更</div>
-            <input type="file" accept="image/*" class="hidden" onchange="handleCardImageSelect(this, ${originalIndex})">
-          </label>
-        ` : `
-          <label class="w-14 h-14 rounded-lg border-2 border-dashed border-slate-200 hover:border-emerald-400 bg-slate-50 hover:bg-emerald-50/50 flex flex-col items-center justify-center cursor-pointer transition flex-shrink-0 text-slate-400 hover:text-emerald-600 block">
-            <span class="text-xs">📷</span>
-            <span class="text-[9px] font-bold mt-0.5">写真追加</span>
-            <input type="file" accept="image/*" class="hidden" onchange="handleCardImageSelect(this, ${originalIndex})">
-          </label>
-        `;
+        let badgeText = `あと ${diff} 日`;
+        if (diff === 0) { badgeClass = "bg-amber-100 text-amber-700 font-bold"; badgeText = "今日が予定日！"; }
+        else if (diff === 1) { badgeClass = "bg-blue-100 text-blue-700 font-bold"; badgeText = "明日が予定日"; }
+        else if (diff < 0) { badgeClass = "bg-rose-100 text-rose-700 font-bold"; badgeText = `${Math.abs(diff)} 日遅れ！`; }
 
         const card = document.createElement('div');
-        card.id = `plant-card-${encodeURIComponent(plant.name)}`;
-        card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative transition-all";
+        card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100";
         card.innerHTML = `
-          <div class="flex justify-between ite
+          <div class="flex justify-between items-start mb-2">
+            <h3 class="font-bold text-slate-800 text-base truncate">${plant.name}</h3>
+            <div class="text-right text-xs font-bold text-slate-700">${nextDate.getFullYear()}/${nextDate.getMonth()+1}/${nextDate.getDate()}</div>
+          </div>
+          <div class="flex justify-between items-center gap-2 mb-2">
+            <div class="text-xs text-slate-500">
+              <span class="inline-block text-[10px] px-2 py-0.5 rounded-full ${badgeClass} mb-1">${badgeText}</span>
+              <div>間隔: ${plant.interval}日 / 水量: ${amount} L ${plant.isSoak ? '(どぶ漬け)' : ''}</div>
+              <div>前回: ${plant.lastWatered}</div>
+            </div>
+            ${plant.image ? `<img src="${plant.image}" class="w-14 h-14 rounded-lg object-cover">` : ''}
+          </div>
+          <div class="flex gap-2 pt-2 border-t border-slate-50">
+            <button type="button" onclick="waterNow(${idx})" class="flex-1 bg-emerald-50 text-emerald-700 text-xs font-bold py-1.5 rounded">💧 今日水やりした</button>
+            <button type="button" onclick="editPlant(${idx})" class="text-xs bg-slate-100 text-slate-600 px-2 py-1.5 rounded">編集</button>
+            <button type="button" onclick="deletePlant(${idx})" class="text-xs bg-rose-50 text-rose-600 px-2 py-1.5 rounded">削除</button>
+          </div>
+        `;
+        listEl.appendChild(card);
+      });
+
+      document.getElementById('todayCount').innerText = `${todayCount}株`;
+      document.getElementById('normalWater').innerText = normalSum.toFixed(1);
+      document.getElementById('maxSoak').innerText = maxSoak.toFixed(1);
+      document.getElementById('totalWater').innerText = (normalSum + maxSoak).toFixed(1);
+
+      document.getElementById('tomorrowCount').innerText = `${tomorrowCount}株`;
+      document.getElementById('tomorrowNormalWater').innerText = tomorrowNormalSum.toFixed(1);
+      document.getElementById('tomorrowMaxSoak').innerText = tomorrowMaxSoak.toFixed(1);
+      document.getElementById('tomorrowTotalWater').innerText = (tomorrowNormalSum + tomorrowMaxSoak).toFixed(1);
+    }
+
+    function waterNow(idx) {
+      if (plants[idx]) {
+        plants[idx].lastWatered = getTodayString();
+        savePlants();
+      }
+    }
+
+    function editPlant(idx) {
+      const p = plants[idx];
+      if (!p) return;
+      document.getElementById('name').value = p.name;
+      document.getElementById('interval').value = p.interval;
+      document.getElementById('lastWatered').value = p.lastWatered;
+      document.getElementById('isSoak').checked = p.isSoak;
+      document.getElementById('editIndex').value = idx;
+      document.getElementById('imageData').value = p.image || '';
+      document.getElementById('submitBtn').innerText = "更新する";
+      document.getElementById('cancelBtn').classList.remove('hidden');
+    }
+
+    function deletePlant(idx) {
+      if (confirm("本当に削除しますか？")) {
+        plants.splice(idx, 1);
+        savePlants();
+      }
+    }
+
+    function resetForm() {
+      document.getElementById('name').value = '';
+      document.getElementById('interval').value = '7';
+      document.getElementById('editIndex').value = "-1";
+      document.getElementById('lastWatered').value = getTodayString();
+      document.getElementById('isSoak').checked = false;
+      document.getElementById('imageData').value = '';
+      document.getElementById('submitBtn').innerText = "登録する";
+      document.getElementById('cancelBtn').classList.add('hidden');
+    }
+
+    // イベントリスナー設定
+    document.addEventListener('DOMContentLoaded', () => {
+      loadPlants();
+      resetForm();
+
+      document.getElementById('submitBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        const name = document.getElementById('name').value.trim();
+        if (!name) { alert("名前を入力してください"); return; }
+
+        const idx = parseInt(document.getElementById('editIndex').value, 10);
+        const data = {
+          id: idx === -1 ? (Date.now() + Math.random()) : plants[idx].id,
+          name: name,
+          interval: parseInt(document.getElementById('interval').value, 10) || 7,
+          waterAmount: parseFloat(document.getElementById('waterSelect').value) || 0.5,
+          lastWatered: document.getElementById('lastWatered').value || getTodayString(),
+          isSoak: document.getElementById('isSoak').checked,
+          image: document.getElementById('imageData').value || null
+        };
+
+        if (idx === -1) plants.push(data);
+        else plants[idx] = data;
+
+        resetForm();
+        savePlants();
+        alert("保存しました！");
+      });
+
+      document.getElementById('cancelBtn').addEventListener('click', resetForm);
+      document.getElementById('sortMode').addEventListener('change', renderList);
+
+      document.getElementById('waterAllBtn').addEventListener('click', () => {
+        const todayStr = getTodayString();
+        plants.forEach(p => p.lastWatered = todayStr);
+        savePlants();
+        alert("本日の水やりをすべて完了しました！");
+      });
+
+      document.getElementById('exportBtn').addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(plants, null, 2)], { type: "application/json" });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `plant_data.json`;
+        a.click();
+      });
+
+      document.getElementById('importFile').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const json = JSON.parse(evt.target.result);
+            const list = Array.isArray(json) ? json : (json.plants || []);
+            plants = list.map(normalizePlant).filter(Boolean);
+            savePlants();
+            alert(`読み込み成功！（${plants.length}件）`);
+          } catch (err) {
+            alert("読み込みエラー: ファイル形式が違います");
+          }
+        };
+        reader.readAsText(file);
+      });
+    });
+  </script>
+</body>
+</html>
