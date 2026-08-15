@@ -66,19 +66,19 @@
     </button>
     <label class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-2 px-3 rounded-lg font-bold transition text-center cursor-pointer">
       📥 インポート (ロード)
-      <input type="file" id="importFile" accept=".json,text/plain,application/json,*/*" onchange="importData(this)" class="hidden">
+      <input type="file" id="importFile" accept=".json,text/plain,application/json,*/*" onchange="importData(event, this)" class="hidden">
     </label>
   </div>
 
-  <!-- 登録・編集フォーム -->
-  <div id="plantFormContainer" class="bg-white p-4 rounded-xl shadow-md mb-6">
+  <!-- 登録・編集フォーム (onsubmitでリロード防止) -->
+  <form id="plantFormContainer" onsubmit="savePlant(event)" class="bg-white p-4 rounded-xl shadow-md mb-6">
     <h2 id="formTitle" class="text-sm font-bold mb-3 text-slate-700">新しい植物を追加</h2>
     <input type="hidden" id="editIndex" value="-1">
     <input type="hidden" id="imageData" value="">
     
     <div class="mb-3">
       <label class="block text-xs font-semibold text-slate-500 mb-1">植物の名前 <span class="text-rose-500">*</span></label>
-      <input type="text" id="name" placeholder="例: パキラ" class="w-full border rounded-lg p-2 text-sm focus:outline-emerald-500">
+      <input type="text" id="name" placeholder="例: パキラ" required class="w-full border rounded-lg p-2 text-sm focus:outline-emerald-500">
     </div>
 
     <!-- 写真選択エリア -->
@@ -133,14 +133,14 @@
     </div>
 
     <div class="flex gap-2">
-      <button type="button" id="submitBtn" onclick="savePlant()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-sm transition">
+      <button type="submit" id="submitBtn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-sm transition">
         登録する
       </button>
       <button type="button" id="cancelBtn" onclick="resetForm()" class="hidden bg-slate-300 text-slate-700 font-bold py-2 px-3 rounded-lg text-sm">
         キャンセル
       </button>
     </div>
-  </div>
+  </form>
 
   <!-- 植物一覧ヘッダー -->
   <div class="mb-2 flex justify-between items-center">
@@ -164,12 +164,10 @@
   </button>
 
   <script>
-    // グローバル変数定義
     window.plants = [];
     window.lastEditedName = null;
     window.currentTargetPlantIndex = null;
 
-    // 日付取得関数
     window.getTodayString = function() {
       const now = new Date();
       const year = now.getFullYear();
@@ -178,7 +176,6 @@
       return `${year}-${month}-${day}`;
     };
 
-    // データ正常化処理
     window.normalizePlant = function(item) {
       if (!item || typeof item !== 'object') return null;
       const name = item.name || item.plantName || item.title || '無題の植物';
@@ -204,7 +201,6 @@
       };
     };
 
-    // 画像圧縮
     window.compressImage = function(file, callback) {
       const reader = new FileReader();
       reader.onload = function(e) {
@@ -235,9 +231,7 @@
           const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
           callback(dataUrl);
         };
-        img.onerror = function() {
-          alert("画像の読み込みに失敗しました。");
-        };
+        img.onerror = function() { alert("画像の読み込みに失敗しました。"); };
         img.src = e.target.result;
       };
       reader.readAsDataURL(file);
@@ -284,7 +278,6 @@
       input.value = '';
     };
 
-    // ストレージロード
     window.loadPlantsFromStorage = function() {
       try {
         const stored = localStorage.getItem('plants');
@@ -300,7 +293,6 @@
       }
     };
 
-    // ストレージセーブ
     window.savePlantsToStorage = function() {
       try {
         localStorage.setItem('plants', JSON.stringify(window.plants));
@@ -364,7 +356,6 @@
       return date;
     };
 
-    // 一覧レンダリング
     window.renderList = function() {
       const listEl = document.getElementById('plantList');
       if (!listEl) return;
@@ -477,4 +468,7 @@
           </div>
 
           <div class="flex gap-2 pt-2 border-t border-slate-50 mt-1">
-            <button type="button" onclick="waterNow(${originalIndex})" class="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs fon
+            <button type="button" onclick="waterNow(${originalIndex})" class="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold py-1.5 rounded transition">
+              💧 今日水やりした
+            </button>
+ 
