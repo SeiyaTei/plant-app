@@ -5,19 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>植物水やり管理アプリ</title>
 
-  <!-- PWA・ホーム画面インストール用の設定 -->
+  <!-- PWA・ホーム画面インストール用設定 -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="水やり管理">
   <meta name="theme-color" content="#047857">
 
-  <!-- SVGアイコン（ホーム画面・タブ用） -->
+  <!-- 🌱 アイコン設定 -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
 
-  <!-- Web App Manifest (インラインデータ化) -->
-  <link rel="manifest" href='data:application/manifest+json,{"name":"植物水やり管理","short_name":"水やり管理","start_url":".","display":"standalone","background_color":"#f1f5f9","theme_color":"#047857","icons":[{"src":"data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>","sizes":"512x512","type":"image/svg+xml","purpose":"any maskable"}]}'>
+  <!-- Web App Manifest -->
+  <link rel="manifest" href='data:application/manifest+json,{"name":"植物水やり管理","short_name":"水やり管理","start_url":"./","display":"standalone","background_color":"#f1f5f9","theme_color":"#047857","icons":[{"src":"data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>","sizes":"512x512","type":"image/svg+xml","purpose":"any maskable"}]}'>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -171,6 +171,23 @@
   <script>
     window.plants = [];
     window.lastEditedName = null;
+
+    // --- Service Worker設定 (PWA化・高速キャッシュ制御) ---
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        const swCode = `
+          const CACHE_NAME = 'plant-app-v2';
+          self.addEventListener('install', e => self.skipWaiting());
+          self.addEventListener('activate', e => e.waitUntil(clients.claim()));
+          self.addEventListener('fetch', e => {
+            e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+          });
+        `;
+        const blob = new Blob([swCode], { type: 'text/javascript' });
+        const swUrl = URL.createObjectURL(blob);
+        navigator.serviceWorker.register(swUrl).catch(err => console.log('SW error:', err));
+      });
+    }
 
     window.getTodayString = function() {
       const now = new Date();
@@ -453,16 +470,4 @@
         card.id = `plant-card-${encodeURIComponent(plant.name)}`;
         card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative transition-all";
         card.innerHTML = `
-          <div class="flex justify-between items-start gap-2 mb-2">
-            <h3 class="font-bold text-slate-800 text-base truncate flex-1 min-w-0">${plant.name}</h3>
-            <div class="text-right flex-shrink-0">
-              <span class="text-[10px] text-slate-400 block">次回予定</span>
-              <div class="text-xs font-bold text-slate-700">${nextDate.getFullYear()}/${nextDate.getMonth()+1}/${nextDate.getDate()}</div>
-            </div>
-          </div>
-
-          <div class="flex justify-between items-center gap-2 mb-2">
-            <div class="flex-1 min-w-0">
-              <span class="inline-block text-[10px] px-2 py-0.5 rounded-full ${badgeClass} mb-2">${badgeText}</span>
-              <div class="text-xs text-slate-500 space-y-0.5">
-             
+          <div class="flex justify-between ite
