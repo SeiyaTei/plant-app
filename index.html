@@ -12,12 +12,12 @@
   <meta name="apple-mobile-web-app-title" content="水やり管理">
   <meta name="theme-color" content="#047857">
 
-  <!-- 🌱 PWA用アイコン・Manifest設定 -->
+  <!-- 🌱 アイコン設定 -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
 
-  <!-- PWA判定を通すためのManifest定義 -->
-  <link rel="manifest" href='data:application/manifest+json,{"name":"植物水やり管理","short_name":"水やり管理","start_url":"./","display":"standalone","background_color":"#f1f5f9","theme_color":"#047857","icons":[{"src":"data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>","sizes":"192x192 512x512","type":"image/svg+xml","purpose":"any maskable"}]}'>
+  <!-- Manifestファイル参照 -->
+  <link rel="manifest" href="manifest.json">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
