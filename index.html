@@ -267,7 +267,6 @@
       const customInput = document.getElementById('waterCustom');
       const stringVal = String(val);
       
-      // selectのオプションに該当する値があるか動的に判定
       const hasOption = Array.from(select.options).some(opt => opt.value === stringVal);
       if (hasOption) { 
         select.value = stringVal; 
@@ -332,13 +331,18 @@
         card.id = `plant-card-${plant.id}`;
         card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative";
         
+        // 写真がある場合は画像、ない場合は統一された「写真なし」プレースホルダーを表示
+        const imageHtml = plant.image
+          ? `<div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 border border-slate-200">
+               <img src="${plant.image}" alt="${plant.name}" class="w-full h-full object-cover">
+             </div>`
+          : `<div class="w-16 h-16 rounded-lg bg-slate-50 border border-dashed border-slate-300 flex items-center justify-center flex-shrink-0 text-[10px] text-slate-400">
+               写真なし
+             </div>`;
+
         card.innerHTML = `
           <div class="flex gap-3 items-start mb-2">
-            ${plant.image ? `
-              <div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 border border-slate-200">
-                <img src="${plant.image}" alt="${plant.name}" class="w-full h-full object-cover">
-              </div>
-            ` : ''}
+            ${imageHtml}
             <div class="flex-1 min-w-0">
               <div class="flex justify-between items-start gap-1 mb-1">
                 <div class="min-w-0 pr-1">
