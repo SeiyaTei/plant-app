@@ -95,6 +95,20 @@
           <option value="2">2.0 L</option>
           <option value="2.5">2.5 L</option>
           <option value="3">3.0 L</option>
+          <option value="3.5">3.5 L</option>
+          <option value="4">4.0 L</option>
+          <option value="4.5">4.5 L</option>
+          <option value="5">5.0 L</option>
+          <option value="5.5">5.5 L</option>
+          <option value="6">6.0 L</option>
+          <option value="6.5">6.5 L</option>
+          <option value="7">7.0 L</option>
+          <option value="7.5">7.5 L</option>
+          <option value="8">8.0 L</option>
+          <option value="8.5">8.5 L</option>
+          <option value="9">9.0 L</option>
+          <option value="9.5">9.5 L</option>
+          <option value="10">10.0 L</option>
           <option value="custom">その他 (手入力)</option>
         </select>
         <input type="number" id="waterCustom" step="0.1" min="0" placeholder="水量 (L)" class="hidden w-full border rounded-lg p-2 text-sm focus:outline-emerald-500">
@@ -251,9 +265,18 @@
     function setSelectedWaterAmount(val) {
       const select = document.getElementById('waterSelect');
       const customInput = document.getElementById('waterCustom');
-      const presetValues = ["0.5", "1", "1.5", "2", "2.5", "3"];
-      if (presetValues.includes(String(val))) { select.value = String(val); customInput.classList.add('hidden'); }
-      else { select.value = 'custom'; customInput.classList.remove('hidden'); customInput.value = val; }
+      const stringVal = String(val);
+      
+      // selectのオプションに該当する値があるか動的に判定
+      const hasOption = Array.from(select.options).some(opt => opt.value === stringVal);
+      if (hasOption) { 
+        select.value = stringVal; 
+        customInput.classList.add('hidden'); 
+      } else { 
+        select.value = 'custom'; 
+        customInput.classList.remove('hidden'); 
+        customInput.value = val; 
+      }
     }
 
     function savePlantsToStorage() {
@@ -309,7 +332,6 @@
         card.id = `plant-card-${plant.id}`;
         card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 relative";
         
-        // 写真がある場合は左側にサムネイル、右側に情報を並べるレスポンシブ構成
         card.innerHTML = `
           <div class="flex gap-3 items-start mb-2">
             ${plant.image ? `
@@ -468,4 +490,4 @@
     renderList();
   </script>
 </body>
-  </html>
+        </html>
