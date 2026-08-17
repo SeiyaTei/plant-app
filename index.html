@@ -73,7 +73,6 @@
         </button>
         <label class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 px-3 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer text-center">
           <span>📥 インポート</span>
-          <!-- ① スマホでのグレーアウト防止のためaccept属性を拡張 -->
           <input type="file" id="importInput" onchange="importData(event)" class="hidden" accept=".json,application/json,text/plain,*/*">
         </label>
       </div>
@@ -225,7 +224,7 @@
         </select>
       </div>
 
-      <div id="plantsListContainer" class="space-y-2.5">
+      <div id="plantsListContainer" class="space-y-3">
         <!-- カードがJavaScriptで動的生成される -->
       </div>
     </section>
@@ -261,13 +260,12 @@
           plants = JSON.parse(saved);
           plants = plants.map(p => ({
             id: p.id || ('plant_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5)),
-            name: p.name || '名前なし',
+            name: p.name || p.plantName || p.title || '名前なし',
             interval: parseInt(p.interval) || 7,
             water: parseFloat(p.water) || (p.waterAmount ? p.waterAmount / 1000 : 0.5),
             lastWatered: p.lastWatered || getTodayString(),
             isDobudzuke: Boolean(p.isDobudzuke),
             image: p.image || null,
-            // 肥料管理データ拡張 & 安全マイグレーション
             fertilizerEnabled: Boolean(p.fertilizerEnabled),
             fertilizerTypes: Array.isArray(p.fertilizerTypes) ? p.fertilizerTypes : [],
             fertilizerInterval: parseInt(p.fertilizerInterval) || 1,
@@ -432,7 +430,7 @@
       document.getElementById('totalPlantCount').innerText = `${plants.length}株`;
     }
 
-    // 本日の水やり一括完了（水やり日を更新し、肥料サイクルも自動進行）
+    // 本日の水やり一括完了
     function completeAllTodayWatering() {
       const todayStr = getTodayString();
       let count = 0;
@@ -457,7 +455,7 @@
       }
     }
 
-    // 植物一覧の描画とソート
+    // 植物一覧の描画とソート（スマホ完全最適化レイアウト）
     function renderPlantsList(highlightId = null) {
       const container = document.getElementById('plantsListContainer');
       const sortType = document.getElementById('selectSort').value;
@@ -498,7 +496,7 @@
           badgeHtml = `<span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full flex-shrink-0">あと${diff}日</span>`;
         }
 
-        // ② & ③ 肥料ステータス表示（すべてのカードで1行構造を維持し、縦幅を完全にそろえる）
+        // 肥料ステータス表示
         let fertRowHtml = '';
         if (plant.fertilizerEnabled) {
           const isDue = (plant.fertilizerCycleIndex === 0);
@@ -508,49 +506,62 @@
 
           if (isDue) {
             fertRowHtml = `
-              <div class="text-[11px] text-purple-700 font-bold flex items-center gap-1 min-w-0">
-                <span class="bg-purple-100 border border-purple-200 px-1.5 py-0.5 rounded text-[10px] whitespace-nowrap truncate max-w-full">
+              <div class="text-[11px] text-purple-700 font-bold flex items-center gap-1">
+                <span class="bg-purple-100 border border-purple-200 px-2 py-0.5 rounded-md text-[10px] leading-none">
                   🧪 今回: ${typeNames}
                 </span>
               </div>`;
           } else {
             const remaining = plant.fertilizerInterval - plant.fertilizerCycleIndex;
             fertRowHtml = `
-              <div class="text-[11px] text-slate-500 flex items-center gap-1 min-w-0 whitespace-nowrap truncate">
-                <span class="bg-slate-100 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded text-[10px]">🧪 水のみ</span>
-                <span class="text-slate-400 text-[10px] truncate">(次回肥料: あと${remaining}回後)</span>
+              <div class="text-[11px] text-slate-500 flex items-center gap-1.5">
+                <span class="bg-slate-100 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded text-[10px] leading-none">🧪 水のみ</span>
+                <span class="text-slate-400 text-[10px]">(次回肥料: あと${remaining}回後)</span>
               </div>`;
           }
         } else {
           fertRowHtml = `
-            <div class="text-[11px] text-slate-400 flex items-center gap-1 min-w-0">
+            <div class="text-[11px] text-slate-400 flex items-center">
               <span class="text-slate-400 text-[10px]">🧪 肥料: なし</span>
             </div>`;
         }
 
         const card = document.createElement('div');
         card.id = `plant-card-${plant.id}`;
-        card.className = `bg-white rounded-2xl p-3.5 shadow-sm border border-slate-200 flex gap-3 items-center justify-between transition ${highlightId === plant.id ? 'card-highlight' : ''}`;
+        card.className = `bg-white rounded-2xl p-3.5 shadow-sm border border-slate-200 space-y-2.5 transition ${highlightId === plant.id ? 'card-highlight' : ''}`;
 
         card.innerHTML = `
-          <div class="flex gap-3 items-center min-w-0 flex-1">
-            <div class="w-16 h-16 rounded-xl border border-slate-200 bg-slate-50 flex-shrink-0 overflow-hidden flex items-center justify-center">
+          <!-- 上部情報エリア -->
+          <div class="flex gap-3 items-start min-w-0">
+            <!-- 写真 -->
+            <div class="w-16 h-16 rounded-xl border border-slate-200 bg-slate-50 flex-shrink-0 overflow-hidden flex items-center justify-center mt-0.5">
               ${plant.image 
                 ? `<img src="${plant.image}" class="w-full h-full object-cover" alt="${plant.name}">` 
                 : `<span class="text-[10px] text-slate-300">写真なし</span>`}
             </div>
+
+            <!-- テキスト情報 -->
             <div class="space-y-1 min-w-0 flex-1">
-              <!-- 1行目: 植物名 & 期日バッジ -->
-              <div class="flex items-center gap-2 justify-between">
-                <h3 class="font-bold text-slate-800 text-sm truncate">${plant.name}</h3>
-                ${badgeHtml}
+              <!-- 1行目: 植物名（フル幅表示） & 期日バッジ・次回予定 -->
+              <div class="flex items-start justify-between gap-1">
+                <h3 class="font-bold text-slate-800 text-sm break-all leading-snug">${plant.name}</h3>
+                <div class="flex flex-col items-end flex-shrink-0 gap-0.5 ml-1">
+                  ${badgeHtml}
+                  <span class="text-[10px] font-bold text-slate-500">次回 ${nextDateDisplay}</span>
+                </div>
               </div>
+
               <!-- 2行目: 間隔 & 水量 -->
-              <div class="text-[11px] text-slate-500 truncate">
-                間隔: ${plant.interval}日 / 水量: ${plant.water}L ${plant.isDobudzuke ? '<span class="text-amber-600 font-bold">(どぶ漬け)</span>' : ''}
+              <div class="text-[11px] text-slate-500 flex items-center gap-1.5 flex-wrap">
+                <span>間隔: ${plant.interval}日</span>
+                <span class="text-slate-300">|</span>
+                <span>水量: ${plant.water}L</span>
+                ${plant.isDobudzuke ? '<span class="text-amber-600 font-bold bg-amber-50 px-1 rounded border border-amber-200 text-[10px]">どぶ漬け</span>' : ''}
               </div>
-              <!-- 3行目: 肥料ステータス（全カード共通1行） -->
+
+              <!-- 3行目: 肥料ステータス -->
               ${fertRowHtml}
+
               <!-- 4行目: 前回水やり日 -->
               <div class="text-[10px] text-slate-400">
                 前回: ${plant.lastWatered.replace(/-/g, '/')}
@@ -558,37 +569,30 @@
             </div>
           </div>
 
-          <!-- 右側: 次回予定 & 操作ボタン -->
-          <div class="flex flex-col items-end gap-2 flex-shrink-0 ml-1">
-            <div class="text-right">
-              <span class="text-[9px] text-slate-400 block">次回予定</span>
-              <span class="text-xs font-bold text-slate-700">${nextDateDisplay}</span>
-            </div>
-            <div class="flex gap-1">
-              <button onclick="completeSingleWatering('${plant.id}')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold py-1 px-2.5 rounded-lg border border-emerald-200 transition">
-                💧 完了
-              </button>
-              <button onclick="startEditPlant('${plant.id}')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-[11px] font-bold py-1 px-2 rounded-lg border border-slate-200 transition">
-                編集
-              </button>
-              <!-- ④ 削除ボタンをはっきり認識できるスタイルに変更 -->
-              <button onclick="deletePlant('${plant.id}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-bold py-1 px-2 rounded-lg border border-rose-200 transition">
-                削除
-              </button>
-            </div>
+          <!-- 下部操作ボタンバー -->
+          <div class="flex items-center gap-2 pt-1 border-t border-slate-100">
+            <button onclick="completeSingleWatering('${plant.id}')" class="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold py-2 px-3 rounded-xl border border-emerald-200 transition active:scale-98 flex items-center justify-center gap-1 shadow-sm">
+              <span>💧 水やり完了</span>
+            </button>
+            <button onclick="startEditPlant('${plant.id}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2 px-3.5 rounded-xl transition">
+              編集
+            </button>
+            <button onclick="deletePlant('${plant.id}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold py-2 px-3 rounded-xl border border-rose-200 transition">
+              削除
+            </button>
           </div>
         `;
         container.appendChild(card);
       });
     }
 
-    // 個別水やり完了（水やり日更新＋肥料サイクル進行）
+    // 個別水やり完了（バグ修正済み：変数アクセスを正しく修正）
     function completeSingleWatering(id) {
       const p = plants.find(x => x.id === id);
       if (p) {
         p.lastWatered = getTodayString();
         if (p.fertilizerEnabled && p.fertilizerInterval > 1) {
-          p.fertilizerCycleIndex = (p.fertilizerCycleIndex + 1) % plant.fertilizerInterval;
+          p.fertilizerCycleIndex = (p.fertilizerCycleIndex + 1) % p.fertilizerInterval;
         }
         saveData();
         renderPlantsList(id);
@@ -746,9 +750,9 @@
           if (Array.isArray(imported)) {
             plants = imported.map(p => ({
               id: p.id || ('plant_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5)),
-              name: p.name || '名前なし',
+              name: p.name || p.plantName || p.title || '名前なし',
               interval: parseInt(p.interval) || 7,
-              water: parseFloat(p.water) || 0.5,
+              water: parseFloat(p.water) || (p.waterAmount ? p.waterAmount / 1000 : 0.5),
               lastWatered: p.lastWatered || getTodayString(),
               isDobudzuke: Boolean(p.isDobudzuke),
               image: p.image || null,
@@ -763,7 +767,6 @@
         } catch(err) {
           alert('正しいJSONファイルを選択してください。');
         }
-        // 同じファイルを再度選べるようにリセット
         e.target.value = '';
       };
       reader.readAsText(file);
