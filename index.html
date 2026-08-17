@@ -275,9 +275,14 @@
       return Math.round(num * 10) / 10;
     }
 
-    // 単一データの安全サニタイズ（① どぶ漬け判定の完全強化）
+    // 単一データの安全サニタイズ（isSoakを含む全どぶ漬けキーに対応）
     function sanitizePlant(p) {
       const isDobudzuke = Boolean(
+        p.isSoak === true ||
+        p.isSoak === 'true' ||
+        p.isSoak === 1 ||
+        p.soak === true ||
+        p.soak === 'true' ||
         p.isDobudzuke === true ||
         p.isDobudzuke === 'true' ||
         p.isDobudzuke === 1 ||
@@ -634,7 +639,7 @@
         container.appendChild(card);
       });
 
-      // ③ スクロール位置を画面の「真ん中 (center)」に調整
+      // スクロール位置を画面中央（center）へ
       if (highlightId) {
         setTimeout(() => {
           const targetCard = document.getElementById(`plant-card-${highlightId}`);
@@ -657,7 +662,7 @@
       }
     }
 
-    // 登録・更新フォーム送信（② 新規登録時のID連携と自動スクロール対応）
+    // 登録・更新フォーム送信
     function handleFormSubmit(e) {
       e.preventDefault();
       const editId = document.getElementById('editPlantId').value;
