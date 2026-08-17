@@ -73,7 +73,8 @@
         </button>
         <label class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 px-3 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer text-center">
           <span>📥 インポート</span>
-          <input type="file" id="importInput" onchange="importData(event)" class="hidden" accept=".json">
+          <!-- ① スマホでのグレーアウト防止のためaccept属性を拡張 -->
+          <input type="file" id="importInput" onchange="importData(event)" class="hidden" accept=".json,application/json,text/plain,*/*">
         </label>
       </div>
     </section>
@@ -488,19 +489,17 @@
         // 期日バッジ
         let badgeHtml = '';
         if (diff < 0) {
-          badgeHtml = `<span class="bg-rose-100 text-rose-700 font-bold border border-rose-300 text-[10px] px-2 py-0.5 rounded-full">${Math.abs(diff)}日遅れ</span>`;
+          badgeHtml = `<span class="bg-rose-100 text-rose-700 font-bold border border-rose-300 text-[10px] px-2 py-0.5 rounded-full flex-shrink-0">${Math.abs(diff)}日遅れ</span>`;
         } else if (diff === 0) {
-          badgeHtml = `<span class="bg-amber-100 text-amber-700 font-bold border border-amber-300 text-[10px] px-2 py-0.5 rounded-full">本日水やり</span>`;
+          badgeHtml = `<span class="bg-amber-100 text-amber-700 font-bold border border-amber-300 text-[10px] px-2 py-0.5 rounded-full flex-shrink-0">本日水やり</span>`;
         } else if (diff === 1) {
-          badgeHtml = `<span class="bg-blue-100 text-blue-600 font-bold border border-blue-200 text-[10px] px-2 py-0.5 rounded-full">明日水やり</span>`;
+          badgeHtml = `<span class="bg-blue-100 text-blue-600 font-bold border border-blue-200 text-[10px] px-2 py-0.5 rounded-full flex-shrink-0">明日水やり</span>`;
         } else {
-          badgeHtml = `<span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full">あと${diff}日</span>`;
+          badgeHtml = `<span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full flex-shrink-0">あと${diff}日</span>`;
         }
 
-        // 肥料バッジ / サイクル状態表示
-        let fertBadgeHtml = '';
-        let fertSkipTextHtml = '';
-
+        // ② & ③ 肥料ステータス表示（すべてのカードで1行構造を維持し、縦幅を完全にそろえる）
+        let fertRowHtml = '';
         if (plant.fertilizerEnabled) {
           const isDue = (plant.fertilizerCycleIndex === 0);
           const typeNames = plant.fertilizerTypes && plant.fertilizerTypes.length > 0 
@@ -508,11 +507,25 @@
             : '肥料';
 
           if (isDue) {
-            fertBadgeHtml = `<span class="bg-purple-100 text-purple-700 font-bold border border-purple-300 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-0.5">🧪 ${typeNames}</span>`;
+            fertRowHtml = `
+              <div class="text-[11px] text-purple-700 font-bold flex items-center gap-1 min-w-0">
+                <span class="bg-purple-100 border border-purple-200 px-1.5 py-0.5 rounded text-[10px] whitespace-nowrap truncate max-w-full">
+                  🧪 今回: ${typeNames}
+                </span>
+              </div>`;
           } else {
             const remaining = plant.fertilizerInterval - plant.fertilizerCycleIndex;
-            fertSkipTextHtml = `<span class="text-slate-400 text-[10px] ml-1.5 font-normal">(次回肥料: あと${remaining}回後)</span>`;
+            fertRowHtml = `
+              <div class="text-[11px] text-slate-500 flex items-center gap-1 min-w-0 whitespace-nowrap truncate">
+                <span class="bg-slate-100 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded text-[10px]">🧪 水のみ</span>
+                <span class="text-slate-400 text-[10px] truncate">(次回肥料: あと${remaining}回後)</span>
+              </div>`;
           }
+        } else {
+          fertRowHtml = `
+            <div class="text-[11px] text-slate-400 flex items-center gap-1 min-w-0">
+              <span class="text-slate-400 text-[10px]">🧪 肥料: なし</span>
+            </div>`;
         }
 
         const card = document.createElement('div');
@@ -520,29 +533,33 @@
         card.className = `bg-white rounded-2xl p-3.5 shadow-sm border border-slate-200 flex gap-3 items-center justify-between transition ${highlightId === plant.id ? 'card-highlight' : ''}`;
 
         card.innerHTML = `
-          <div class="flex gap-3 items-center min-w-0">
+          <div class="flex gap-3 items-center min-w-0 flex-1">
             <div class="w-16 h-16 rounded-xl border border-slate-200 bg-slate-50 flex-shrink-0 overflow-hidden flex items-center justify-center">
               ${plant.image 
                 ? `<img src="${plant.image}" class="w-full h-full object-cover" alt="${plant.name}">` 
                 : `<span class="text-[10px] text-slate-300">写真なし</span>`}
             </div>
-            <div class="space-y-1 min-w-0">
-              <div class="flex items-center gap-1.5 flex-wrap">
+            <div class="space-y-1 min-w-0 flex-1">
+              <!-- 1行目: 植物名 & 期日バッジ -->
+              <div class="flex items-center gap-2 justify-between">
                 <h3 class="font-bold text-slate-800 text-sm truncate">${plant.name}</h3>
                 ${badgeHtml}
-                ${fertBadgeHtml}
               </div>
-              <div class="text-[11px] text-slate-500">
+              <!-- 2行目: 間隔 & 水量 -->
+              <div class="text-[11px] text-slate-500 truncate">
                 間隔: ${plant.interval}日 / 水量: ${plant.water}L ${plant.isDobudzuke ? '<span class="text-amber-600 font-bold">(どぶ漬け)</span>' : ''}
               </div>
-              <div class="text-[10px] text-slate-400 flex items-center flex-wrap">
-                <span>前回: ${plant.lastWatered.replace(/-/g, '/')}</span>
-                ${fertSkipTextHtml}
+              <!-- 3行目: 肥料ステータス（全カード共通1行） -->
+              ${fertRowHtml}
+              <!-- 4行目: 前回水やり日 -->
+              <div class="text-[10px] text-slate-400">
+                前回: ${plant.lastWatered.replace(/-/g, '/')}
               </div>
             </div>
           </div>
 
-          <div class="flex flex-col items-end gap-2 flex-shrink-0">
+          <!-- 右側: 次回予定 & 操作ボタン -->
+          <div class="flex flex-col items-end gap-2 flex-shrink-0 ml-1">
             <div class="text-right">
               <span class="text-[9px] text-slate-400 block">次回予定</span>
               <span class="text-xs font-bold text-slate-700">${nextDateDisplay}</span>
@@ -551,10 +568,11 @@
               <button onclick="completeSingleWatering('${plant.id}')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold py-1 px-2.5 rounded-lg border border-emerald-200 transition">
                 💧 完了
               </button>
-              <button onclick="startEditPlant('${plant.id}')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-[11px] font-bold py-1 px-2 rounded-lg transition">
+              <button onclick="startEditPlant('${plant.id}')" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-[11px] font-bold py-1 px-2 rounded-lg border border-slate-200 transition">
                 編集
               </button>
-              <button onclick="deletePlant('${plant.id}')" class="bg-slate-100 hover:bg-rose-100 text-slate-400 hover:text-rose-600 text-[11px] font-bold py-1 px-2 rounded-lg transition">
+              <!-- ④ 削除ボタンをはっきり認識できるスタイルに変更 -->
+              <button onclick="deletePlant('${plant.id}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-bold py-1 px-2 rounded-lg border border-rose-200 transition">
                 削除
               </button>
             </div>
@@ -570,7 +588,7 @@
       if (p) {
         p.lastWatered = getTodayString();
         if (p.fertilizerEnabled && p.fertilizerInterval > 1) {
-          p.fertilizerCycleIndex = (p.fertilizerCycleIndex + 1) % p.fertilizerInterval;
+          p.fertilizerCycleIndex = (p.fertilizerCycleIndex + 1) % plant.fertilizerInterval;
         }
         saveData();
         renderPlantsList(id);
@@ -745,6 +763,8 @@
         } catch(err) {
           alert('正しいJSONファイルを選択してください。');
         }
+        // 同じファイルを再度選べるようにリセット
+        e.target.value = '';
       };
       reader.readAsText(file);
     }
