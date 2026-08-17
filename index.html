@@ -253,7 +253,7 @@
       return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     }
 
-    // 水量の安全な正規化処理（ml単位・極小値・文字列混在を安全に補正）
+    // 水量の安全な正規化処理
     function normalizeWater(val, fallbackVal) {
       let num = parseFloat(val);
       if (isNaN(num) || num <= 0) {
@@ -262,11 +262,9 @@
       if (isNaN(num) || num <= 0) {
         return 0.5;
       }
-      // 50以上は過去のml表記（500ml -> 0.5L）
       if (num >= 50) {
         return Math.round((num / 1000) * 10) / 10;
       }
-      // 0.05未満の極小値に化けていた場合の安全復元
       if (num < 0.05) {
         let restored = num * 1000;
         if (restored >= 0.1 && restored <= 20) {
@@ -277,17 +275,32 @@
       return Math.round(num * 10) / 10;
     }
 
-    // 単一データの安全サニタイズ
+    // 単一データの安全サニタイズ（① どぶ漬け判定の完全強化）
     function sanitizePlant(p) {
+      const isDobudzuke = Boolean(
+        p.isDobudzuke === true ||
+        p.isDobudzuke === 'true' ||
+        p.isDobudzuke === 1 ||
+        p.dobudzuke === true ||
+        p.dobudzuke === 'true' ||
+        p.isDobuduke === true ||
+        p.isDobuduke === 'true' ||
+        p.dobuzuke === true ||
+        p.dobuzuke === 'true' ||
+        p.isDipping === true ||
+        p.isDipping === 'true' ||
+        p.method === 'dobudzuke'
+      );
+
       return {
         id: String(p.id || ('plant_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5))),
         name: String(p.name || p.plantName || p.title || '名前なし'),
         interval: parseInt(p.interval, 10) || 7,
         water: normalizeWater(p.water, p.waterAmount),
         lastWatered: String(p.lastWatered || getTodayString()).replace(/\//g, '-'),
-        isDobudzuke: Boolean(p.isDobudzuke),
+        isDobudzuke: isDobudzuke,
         image: p.image || null,
-        fertilizerEnabled: Boolean(p.fertilizerEnabled),
+        fertilizerEnabled: Boolean(p.fertilizerEnabled === true || p.fertilizerEnabled === 'true'),
         fertilizerTypes: Array.isArray(p.fertilizerTypes) ? p.fertilizerTypes : [],
         fertilizerInterval: parseInt(p.fertilizerInterval, 10) || 1,
         fertilizerCycleIndex: parseInt(p.fertilizerCycleIndex, 10) || 0
@@ -621,14 +634,14 @@
         container.appendChild(card);
       });
 
-      // 完了したカードへスムーズに案内スクロール
+      // ③ スクロール位置を画面の「真ん中 (center)」に調整
       if (highlightId) {
         setTimeout(() => {
           const targetCard = document.getElementById(`plant-card-${highlightId}`);
           if (targetCard) {
-            targetCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
-        }, 50);
+        }, 100);
       }
     }
 
@@ -644,7 +657,7 @@
       }
     }
 
-    // 登録・更新フォーム送信
+    // 登録・更新フォーム送信（② 新規登録時のID連携と自動スクロール対応）
     function handleFormSubmit(e) {
       e.preventDefault();
       const editId = document.getElementById('editPlantId').value;
@@ -675,6 +688,8 @@
         fertilizerCycleIndex = parseInt(document.getElementById('inputFertilizerCycle').value, 10) || 0;
       }
 
+      let targetId = editId;
+
       if (editId) {
         const p = plants.find(x => String(x.id) === String(editId));
         if (p) {
@@ -690,8 +705,9 @@
           p.fertilizerCycleIndex = fertilizerCycleIndex;
         }
       } else {
+        const newId = 'plant_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
         plants.push({
-          id: 'plant_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          id: newId,
           name: name,
           interval: interval,
           water: water,
@@ -703,10 +719,11 @@
           fertilizerInterval: fertilizerInterval,
           fertilizerCycleIndex: fertilizerCycleIndex
         });
+        targetId = newId;
       }
 
       cancelEditMode();
-      saveData(editId || null);
+      saveData(targetId);
     }
 
     // 編集モード開始
