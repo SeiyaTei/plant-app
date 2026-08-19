@@ -889,13 +889,13 @@
       }
     }
 
-    // エクスポート（手動 & 自動対応）
+    // エクスポート（手動 & 自動対応：ファイル名を常に plant_backup.json で固定）
     function exportData(isAuto = false) {
       if (!plants || plants.length === 0) return;
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(plants));
       const a = document.createElement('a');
       a.setAttribute("href", dataStr);
-      a.setAttribute("download", `plants_backup_${getTodayString()}.json`);
+      a.setAttribute("download", "plant_backup.json");
       a.click();
     }
 
