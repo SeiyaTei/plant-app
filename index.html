@@ -390,10 +390,11 @@
       renderPlantsList();
     }
 
-    function saveData(highlightId = null, triggerBackup = true) {
+    // shouldScroll: trueの場合のみ画面中央スクロールを実行
+    function saveData(highlightId = null, triggerBackup = true, shouldScroll = false) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(plants));
       updateDashboard();
-      renderPlantsList(highlightId);
+      renderPlantsList(highlightId, shouldScroll);
       if (triggerBackup) {
         checkAndTriggerAutoBackup();
       }
@@ -572,15 +573,15 @@
       });
 
       if (count > 0) {
-        saveData();
+        saveData(null, true, false);
         alert(`本日対象の ${count}株 の水やりを完了として記録しました！`);
       } else {
         alert('本日水やり対象の植物はありません。');
       }
     }
 
-    // 植物一覧の描画とソート
-    function renderPlantsList(highlightId = null) {
+    // 植物一覧の描画とソート（shouldScrollがtrueの場合のみ自動スクロール）
+    function renderPlantsList(highlightId = null, shouldScroll = false) {
       const container = document.getElementById('plantsListContainer');
       const sortType = document.getElementById('selectSort').value;
 
@@ -710,8 +711,8 @@
         container.appendChild(card);
       });
 
-      // 画面中央スクロール
-      if (highlightId) {
+      // 新規登録・編集時のみ中央スクロールを実行（水やり完了時はスクロールせず位置をキープ）
+      if (highlightId && shouldScroll) {
         setTimeout(() => {
           const targetCard = document.getElementById(`plant-card-${highlightId}`);
           if (targetCard) {
@@ -721,7 +722,7 @@
       }
     }
 
-    // 個別水やり完了
+    // 個別水やり完了（画面位置をキープし、スクロールさせない）
     function completeSingleWatering(id) {
       const p = plants.find(x => String(x.id) === String(id));
       if (p) {
@@ -729,11 +730,11 @@
         if (p.fertilizerEnabled && p.fertilizerInterval > 1) {
           p.fertilizerCycleIndex = (p.fertilizerCycleIndex + 1) % p.fertilizerInterval;
         }
-        saveData(id);
+        saveData(id, true, false); // shouldScrollをfalseに指定
       }
     }
 
-    // 登録・更新フォーム送信
+    // 登録・更新フォーム送信（新規登録・編集時は該当カードへスクロール）
     function handleFormSubmit(e) {
       e.preventDefault();
       const editId = document.getElementById('editPlantId').value;
@@ -802,7 +803,7 @@
       }
 
       cancelEditMode();
-      saveData(targetId);
+      saveData(targetId, true, true); // 新規・更新時は該当カードへ自動スクロール
     }
 
     // 編集モード開始
@@ -885,7 +886,7 @@
     function deletePlant(id) {
       if (confirm('この植物を削除しますか？')) {
         plants = plants.filter(x => String(x.id) !== String(id));
-        saveData();
+        saveData(null, true, false);
       }
     }
 
@@ -908,7 +909,7 @@
           const imported = JSON.parse(event.target.result);
           if (Array.isArray(imported)) {
             plants = imported.map(p => sanitizePlant(p));
-            saveData(null, false); // インポート時は自動バックアップを重複実行しない
+            saveData(null, false, false); // インポート時は自動バックアップ・スクロールを重複実行しない
             alert(`データの復元が完了しました！（${plants.length}株）`);
           } else {
             alert('正しいJSONデータ形式ではありません。');
